@@ -163,19 +163,19 @@ export default function TactileKeypad({
               <span className="text-[8px] text-amber-300 font-bold uppercase font-mono">Panier vide</span>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               id="pad-btn-pay-especes"
               onClick={() => handlePayment("ESPECES")}
               disabled={isBasketEmpty || !currentUser}
-              className="py-5 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-emerald-400 shadow-lg shadow-emerald-950/40 cursor-pointer pl-4 flex items-center gap-3.5 min-h-[64px]"
+              className="py-3 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-emerald-400 shadow-md cursor-pointer flex items-center gap-2 min-h-[56px]"
             >
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border border-white/20">
-                <Coins className="w-6.5 h-6.5 text-amber-300 stroke-[2.5]" />
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <Coins className="w-5 h-5 text-amber-300 stroke-[2.5]" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-black tracking-wider leading-none">ESPÈCES (CASH)</div>
-                <div className="text-[9px] text-white/90 mt-1 uppercase font-bold tracking-tight">Clavier Auto-Caisse</div>
+              <div className="text-left overflow-hidden">
+                <div className="text-[11px] font-black tracking-normal leading-none truncate">ESPÈCES (CASH)</div>
+                <div className="text-[8px] text-white/95 mt-0.5 truncate font-sans font-bold">Auto-Caisse</div>
               </div>
             </button>
 
@@ -183,14 +183,14 @@ export default function TactileKeypad({
               id="pad-btn-pay-carte"
               onClick={() => handlePayment("CARTE")}
               disabled={isBasketEmpty || !currentUser}
-              className="py-5 px-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-cyan-400 shadow-lg shadow-cyan-950/40 cursor-pointer pl-4 flex items-center gap-3.5 min-h-[64px]"
+              className="py-3 px-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-cyan-400 shadow-md cursor-pointer flex items-center gap-2 min-h-[56px]"
             >
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border border-white/20">
-                <CreditCard className="w-6.5 h-6.5 text-white stroke-[2.5]" />
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <CreditCard className="w-5 h-5 text-white stroke-[2.5]" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-black tracking-wider leading-none">CARD / MONÉTIQUE</div>
-                <div className="text-[9px] text-white/90 mt-1 uppercase font-bold tracking-tight">TPE Terminal</div>
+              <div className="text-left overflow-hidden">
+                <div className="text-[11px] font-black tracking-normal leading-none truncate font-sans">CARTE / TPE</div>
+                <div className="text-[8px] text-white/95 mt-0.5 truncate font-sans font-bold">Monétique</div>
               </div>
             </button>
 
@@ -198,14 +198,14 @@ export default function TactileKeypad({
               id="pad-btn-pay-tndpay"
               onClick={() => handlePayment("TND_PAY")}
               disabled={isBasketEmpty || !currentUser}
-              className="py-5 px-3 rounded-2xl bg-[#0EA5E9] hover:bg-[#38BDF8] disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-sky-300 shadow-lg shadow-sky-950/40 cursor-pointer pl-4 flex items-center gap-3.5 min-h-[64px]"
+              className="py-3 px-2 rounded-xl bg-[#0EA5E9] hover:bg-[#38BDF8] disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-sky-305 shadow-md cursor-pointer flex items-center gap-2 min-h-[56px]"
             >
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border border-white/20">
-                <Smartphone className="w-6.5 h-6.5 text-[#FDF43F] stroke-[2.5] animate-pulse" />
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <Smartphone className="w-5 h-5 text-[#FDF43F] stroke-[2.5]" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-black tracking-wider leading-none">D-DINAR WALLET</div>
-                <div className="text-[9px] text-white/90 mt-1 uppercase font-bold tracking-tight">Payer via Application</div>
+              <div className="text-left overflow-hidden">
+                <div className="text-[11px] font-black tracking-normal leading-none truncate font-sans">D-DINAR WALLET</div>
+                <div className="text-[8px] text-white/95 mt-0.5 truncate font-sans font-bold">Mobile App</div>
               </div>
             </button>
 
@@ -213,14 +213,14 @@ export default function TactileKeypad({
               id="pad-btn-pay-cheque"
               onClick={() => handlePayment("CHEQUE")}
               disabled={isBasketEmpty || !currentUser}
-              className="py-5 px-3 rounded-2xl bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-amber-400 shadow-lg shadow-amber-950/30 cursor-pointer pl-4 flex items-center gap-3.5 min-h-[64px]"
+              className="py-3 px-2 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black transition-all active:scale-[0.96] border border-amber-400 shadow-md cursor-pointer flex items-center gap-2 min-h-[56px]"
             >
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border border-white/20">
-                <Plus className="w-6.5 h-6.5 text-white stroke-[3]" />
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <Plus className="w-5 h-5 text-white stroke-[3]" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-black tracking-wider leading-none">CHÈQUE BT</div>
-                <div className="text-[9px] text-white/90 mt-1 uppercase font-bold tracking-tight">Traite Porteur</div>
+              <div className="text-left overflow-hidden">
+                <div className="text-[11px] font-black tracking-normal leading-none truncate font-sans">CHÈQUE BT</div>
+                <div className="text-[8px] text-white/95 mt-0.5 truncate font-sans font-bold">Traite Porteur</div>
               </div>
             </button>
           </div>

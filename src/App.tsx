@@ -34,6 +34,8 @@ import {
 } from "./services/db";
 
 import { MenuItem, BasketItem, TeaRoomUser, TransactionRecord, InventoryLogItem, CategoryItem, HomeSettings } from "./types";
+// @ts-ignore
+import futuristicTeaIcon from "./assets/images/futuristic_tea_icon_1781193728060.jpg";
 import RfidBadgeSimulator from "./components/RfidBadgeSimulator";
 import ReceiptPrinterSimulator from "./components/ReceiptPrinterSimulator";
 import StockManagerPanel from "./components/StockManagerPanel";
@@ -396,7 +398,7 @@ export default function App() {
         <div className="pointer-events-none absolute right-1/4 top-0 bottom-0 w-80 opacity-20 hidden md:block">
           <div className="w-full h-full bg-gradient-to-r from-transparent via-[#0E1510] to-[#0E1510] absolute inset-0 z-10" />
           <img 
-            src="/src/assets/images/futuristic_tea_icon_1781193728060.jpg" 
+            src={futuristicTeaIcon} 
             className="w-full h-full object-cover opacity-60 mix-blend-screen scale-110" 
             alt="Teahouse Watermark" 
             referrerPolicy="no-referrer"
@@ -416,7 +418,7 @@ export default function App() {
                   <img src={homeSettings.logoUrl} className="w-full h-full object-cover" alt="Logo" referrerPolicy="no-referrer" />
                 ) : (
                   <img 
-                    src="/src/assets/images/futuristic_tea_icon_1781193728060.jpg" 
+                    src={futuristicTeaIcon} 
                     className="w-full h-full object-cover border border-emerald-500/20" 
                     alt="L'Heure du Thé" 
                     referrerPolicy="no-referrer"
@@ -717,7 +719,7 @@ export default function App() {
                           key={p.id}
                           disabled={isOutOfStock}
                           onClick={() => addToBasket(p)}
-                          className={`group text-left bg-white border border-slate-300 p-4.5 rounded-2xl flex flex-col justify-between transition-all duration-150 relative shadow-xs select-none min-h-[300px] ${
+                          className={`group text-left bg-white border border-slate-300 p-4 rounded-2xl flex flex-col justify-between transition-all duration-150 relative shadow-xs select-none min-h-[220px] ${
                             isOutOfStock 
                               ? "opacity-50 cursor-not-allowed" 
                               : "hover:border-[#8BA888] hover:shadow-lg hover:shadow-slate-200/50 cursor-pointer active:scale-95 active:shadow-inner"
@@ -725,7 +727,7 @@ export default function App() {
                         >
                           <div className="w-full">
                             {/* Photo or emoji placeholder */}
-                            <div className="w-full aspect-square bg-gradient-to-br from-[#F1F3EE] to-white rounded-xl flex items-center justify-center mb-3.5 font-semibold text-slate-850 shrink-0 overflow-hidden relative border border-slate-200 p-0 shadow-inner">
+                            <div className="w-full h-24 md:h-28 bg-gradient-to-br from-[#F1F3EE] to-white rounded-xl flex items-center justify-center mb-3 font-semibold text-slate-850 shrink-0 overflow-hidden relative border border-slate-200 p-0 shadow-inner">
                               {p.image_url ? (
                                 <img 
                                   src={p.image_url} 
@@ -734,7 +736,7 @@ export default function App() {
                                   referrerPolicy="no-referrer"
                                 />
                               ) : (
-                                <span className="text-4xl filter drop-shadow-sm transform group-hover:scale-110 transition-transform">
+                                <span className="text-3xl filter drop-shadow-sm transform group-hover:scale-110 transition-transform">
                                   {p.categorie.toLowerCase().includes("vert") || p.nom.toLowerCase().includes("matcha") || p.nom.toLowerCase().includes("sencha")
                                     ? "🍵" 
                                     : p.categorie.toLowerCase().includes("noir") || p.nom.toLowerCase().includes("earl") || p.nom.toLowerCase().includes("oolong")

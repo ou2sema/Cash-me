@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Information regarding tea room staff, authenticated via RFID cards or email",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "nom": { "type": "string" },
+        "email": { "type": "string" },
+        "rfid_token": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "gerant", "serveur"] }
+      },
+      "required": ["uid", "nom", "email", "rfid_token", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A tea room menu item, with current stock levels and optional photo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nom": { "type": "string" },
+        "prix": { "type": "number" },
+        "stock_actuel": { "type": "number" },
+        "stock_alerte": { "type": "number" },
+        "categorie": { "type": "string" },
+        "description": { "type": "string" },
+        "image_url": { "type": "string" }
+      },
+      "required": ["id", "nom", "prix", "stock_actuel", "stock_alerte", "categorie"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A modular category for tea room products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nom": { "type": "string" }
+      },
+      "required": ["id", "nom"]
+    },
+    "HomeSettings": {
+      "title": "HomeSettings",
+      "description": "Customizable greeting screen settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "salonName": { "type": "string" },
+        "welcomeTitle": { "type": "string" },
+        "welcomeSubtitle": { "type": "string" },
+        "announcement": { "type": "string" },
+        "showAnnouncement": { "type": "boolean" },
+        "logoUrl": { "type": "string" }
+      },
+      "required": ["id", "salonName", "welcomeTitle", "welcomeSubtitle", "announcement", "showAnnouncement"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Sales or stock intake transactions recorded in the salon",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "integer" },
+        "total": { "type": "number" },
+        "user_id": { "type": "string" },
+        "user_nom": { "type": "string" },
+        "rfid_token": { "type": "string" },
+        "type": { "type": "string", "enum": ["vente", "achat", "reajustement"] },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "total", "user_id", "user_nom", "type", "status"]
+    },
+    "InventoryLog": {
+      "title": "InventoryLog",
+      "description": "An audit log of stock movements for products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "product_id": { "type": "string" },
+        "product_nom": { "type": "string" },
+        "quantite_ajoutee": { "type": "number" },
+        "date": { "type": "string" },
+        "user_id": { "type": "string" },
+        "user_nom": { "type": "string" },
+        "action": { "type": "string" }
+      },
+      "required": ["id", "product_id", "product_nom", "quantite_ajoutee", "date", "user_id", "user_nom", "action"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Staff profile accessible by managers, admins, and self"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Available products menu, managed by admins or managers, read by all"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Available categories, managed by admins or managers, read by all"
+    },
+    "/settings/{settingsId}": {
+      "schema": "HomeSettings",
+      "description": "Application general settings, managed by admins or managers, read by all"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Record of a sale or inventory purchase, created by servers/managers/admins"
+    },
+    "/inventory_logs/{logId}": {
+      "schema": "InventoryLog",
+      "description": "Audit trails for stock entries and sales, checked by manager and admin"
+    }
+  }
+}

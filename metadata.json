@@ -1,0 +1,6 @@
+{
+  "name": "Gestion de Salon de Thé",
+  "description": "Application robuste sur tablette pour la gestion de salon de thé avec authentification RFID, contrôle de stocks, et impression thermique synchrone Offline-First.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,94 @@
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithCustomToken } from "firebase/auth";
+import { 
+  getFirestore, 
+  enableNetwork, 
+  disableNetwork,
+  onSnapshot,
+  collection,
+  query,
+  getDocs,
+  getDoc,
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDocFromServer
+} from "firebase/firestore";
+import firebaseConfig from "../firebase-applet-config.json";
+
+// Initialize Firebase App
+const app = initializeApp(firebaseConfig);
+
+// Initialize Services
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "ai-studio-ebcb1eaf-5e9d-44b8-b99b-98338b00e411");
+export const auth = getAuth(app);
+
+// Connectivity simulation using real SDK operations
+export async function setFirestoreOnline(online: boolean) {
+  if (online) {
+    await enableNetwork(db);
+  } else {
+    await disableNetwork(db);
+  }
+}
+
+// Error handling in strict compliance with the Firebase Integration Skill (OperationType and FirestoreErrorInfo)
+export enum OperationType {
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Helper to quickly test Firestore availability
+export async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, "test", "connection"));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("the client is offline")) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+}

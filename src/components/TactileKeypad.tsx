@@ -12,6 +12,7 @@ import {
   Percent, 
   HelpCircle, 
   Lock, 
+  Unlock,
   Sparkles,
   Smartphone
 } from "lucide-react";
@@ -30,6 +31,8 @@ interface TactileKeypadProps {
   onLogout: () => void;
   currentUser: TeaRoomUser | null;
   currentDiscount: number;
+  isCaisseLocked?: boolean;
+  onToggleLock?: () => void;
 }
 
 export default function TactileKeypad({
@@ -44,7 +47,9 @@ export default function TactileKeypad({
   onFocusVendeur,
   onLogout,
   currentUser,
-  currentDiscount
+  currentDiscount,
+  isCaisseLocked = false,
+  onToggleLock
 }: TactileKeypadProps) {
   
   // Audio tactile beep feedback
@@ -284,12 +289,25 @@ export default function TactileKeypad({
 
             <button
               id="pad-btn-verrouille"
-              onClick={() => handleAction(onLogout, 250)}
-              disabled={!currentUser}
-              className="py-4 px-4 rounded-xl bg-[#F97316] hover:bg-[#FB923C] disabled:opacity-30 disabled:cursor-not-allowed text-slate-950 font-black text-xs flex items-center justify-center gap-2.5 transition-all active:scale-95 border border-orange-400 shadow-md cursor-pointer uppercase min-h-[48px]"
+              onClick={() => handleAction(onToggleLock ? onToggleLock : onLogout, 250)}
+              disabled={!isCaisseLocked && !currentUser}
+              className={`py-4 px-4 rounded-xl text-slate-950 font-black text-xs flex items-center justify-center gap-2.5 transition-all active:scale-95 border shadow-md cursor-pointer uppercase min-h-[48px] ${
+                isCaisseLocked 
+                  ? "bg-[#10B981] hover:bg-[#34D399] border-emerald-450 animate-pulse" 
+                  : "bg-[#F97316] hover:bg-[#FB923C] border-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+              }`}
             >
-              <Lock className="w-5 h-5 text-slate-950 stroke-[2.5]" />
-              <span>Verrouiller</span>
+              {isCaisseLocked ? (
+                <>
+                  <Unlock className="w-5 h-5 text-slate-950 stroke-[2.5]" />
+                  <span>Déverrouiller</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-5 h-5 text-slate-950 stroke-[2.5]" />
+                  <span>Verrouiller</span>
+                </>
+              )}
             </button>
           </div>
         </div>

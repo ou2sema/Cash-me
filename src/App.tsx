@@ -21,6 +21,9 @@ import {
   LayoutGrid,
   Cpu,
   User,
+  Users,
+  Lock,
+  Unlock,
   TrendingUp,
   Sliders
 } from "lucide-react";
@@ -47,6 +50,7 @@ import ReceiptPrinterSimulator from "./components/ReceiptPrinterSimulator";
 import StockManagerPanel from "./components/StockManagerPanel";
 import DashboardStatsPanel from "./components/DashboardStatsPanel";
 import TactileKeypad from "./components/TactileKeypad";
+import PinAuthModal from "./components/PinAuthModal";
 
 export default function App() {
   // Database States
@@ -66,6 +70,11 @@ export default function App() {
   const [activeTab, setActiveTab ] = useState<"caisse" | "ventes" | "stocks" | "stats">("caisse");
   const [currentUser, setCurrentUser] = useState<TeaRoomUser | null>(null);
   const [showRfidSimulator, setShowRfidSimulator] = useState<boolean>(false);
+
+  // Security Locking & PIN Authorization
+  const [isCaisseLocked, setIsCaisseLocked] = useState<boolean>(false);
+  const [pinTargetUser, setPinTargetUser] = useState<TeaRoomUser | null>(null);
+  const [pinSuccessAction, setPinSuccessAction] = useState<{ type: "unlock" | "switch_user"; user: TeaRoomUser } | null>(null);
   
   // Current Live Basket & tactile modifiers
   const [basket, setBasket] = useState<BasketItem[]>([]);
@@ -351,7 +360,7 @@ export default function App() {
     };
   }, [isReady, allStaff.length]);
 
-  // 3. Simulated RFID Tap Authentication
+  // 3. Simulated RFID Tap Authentication & PIN Check Trigger
   const handleRfidScan = async (rfidToken: string) => {
     setGlobalError("");
     
@@ -361,10 +370,20 @@ export default function App() {
     );
 
     if (matchedProfile) {
-      setCurrentUser(matchedProfile);
+      setPinTargetUser(matchedProfile);
+      setPinSuccessAction({ type: "switch_user", user: matchedProfile });
     } else {
-      // In a real database, RFID might create a server user profile
-      throw new Error(`RFID '${rfidToken}' inconnu.`);
+      // Create a temporary matched profile so they can register and test any custom RFID on-the-fly!
+      const tempProfile: TeaRoomUser = {
+        uid: `custom_${rfidToken}`,
+        nom: `Profil Custom (${rfidToken})`,
+        email: "custom@salondethe.com",
+        rfid_token: rfidToken,
+        role: "serveur",
+        pin_code: "1111" // Code de secours d'évaluation
+      };
+      setPinTargetUser(tempProfile);
+      setPinSuccessAction({ type: "switch_user", user: tempProfile });
     }
   };
 
@@ -737,9 +756,67 @@ export default function App() {
             
             {activeTab === "caisse" && (
               /* CAISSE TACTILE VIEW */
-              <div id="viewport-caisse" className="space-y-6">
+              <div id="viewport-caisse" className="space-y-6 relative min-h-[400px]">
+                {isCaisseLocked ? (
+                  /* GORGEOUS HIGH-SECURITY LOCKED OVERLAY */
+                  <div id="caisse-locked-overlay" className="bg-[#111827]/75 border border-red-500/10 rounded-3xl p-8 backdrop-blur-md flex flex-col items-center justify-center text-center py-16 animate-in fade-in duration-300 relative overflow-hidden select-none">
+                    {/* Glowing circular red neon backdrop */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+                    
+                    <div className="relative mb-6">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-rose-500 to-amber-500 p-[1.5px] shadow-[0_0_30px_rgba(239,68,68,0.4)] flex items-center justify-center animate-bounce">
+                        <Lock className="w-10 h-10 text-white stroke-[2]" />
+                      </div>
+                      <div className="absolute top-0 right-0 w-4 h-4 rounded-full bg-rose-500 animate-ping" />
+                    </div>
 
-                {/* WELCOME ANNOUNCEMENT BAR */}
+                    <h2 className="text-xl font-sans font-black tracking-widest text-[#FCA5A5] uppercase leading-none mb-2">
+                      CONSOLE SECURE VERROUILLÉE
+                    </h2>
+                    <p className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-widest bg-red-950/40 border border-red-900/40 px-3 py-1 rounded-full mb-6">
+                      CAFÉ MAAZIM // SECURITÉ CAISSE ACTIVE
+                    </p>
+                    
+                    <p className="text-sm text-slate-400 max-w-sm mb-8 leading-relaxed">
+                      La caisse tactile a été verrouillée de sécurité. 
+                      Saisissez le code PIN pour déverrouiller la session de <span className="text-white font-extrabold">{currentUser?.nom || "l'opérateur"}</span>.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-4 items-center relative z-10 w-full max-w-xs">
+                      <button
+                        id="caisse-unlock-trigger-btn"
+                        onClick={() => {
+                          if (currentUser) {
+                            setPinTargetUser(currentUser);
+                            setPinSuccessAction({ type: "unlock", user: currentUser });
+                          } else {
+                            setGlobalError("Sélectionnez d'abord un vendeur.");
+                            focusVendeurInput();
+                          }
+                        }}
+                        className="w-full bg-[#10B981] hover:bg-[#34D399] text-slate-900 font-extrabold text-xs py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition duration-200 shadow-lg shadow-emerald-500/10 cursor-pointer"
+                      >
+                        <Unlock className="w-4 h-4 shrink-0 stroke-[2.5]" />
+                        <span>Saisir le Code PIN</span>
+                      </button>
+                      
+                      <button
+                        id="caisse-locked-switch-user-btn"
+                        onClick={focusVendeurInput}
+                        className="w-full bg-white/5 hover:bg-white/10 text-cyan-300 hover:text-white border border-white/10 font-bold text-xs py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition cursor-pointer"
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        <span>Changer de Vendeur</span>
+                      </button>
+                    </div>
+
+                    <div className="mt-8 text-[9px] font-mono text-slate-500 uppercase tracking-widest">
+                      SYSTEM COMPLIANCY POS-3000-SECURE-CHAIN // UTC {currentTime.toISOString().split("T")[1].slice(0, 8)}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* WELCOME ANNOUNCEMENT BAR */}
                 {homeSettings?.showAnnouncement && homeSettings.announcement && (
                   <div className="bg-[#111827]/40 text-[#A5F3FC]/90 rounded-2xl p-4 flex items-center justify-between gap-4 text-xs font-medium shadow-[0_0_15px_rgba(165,243,252,0.05)] border border-white/[0.06] backdrop-blur-md">
                     <div className="flex items-center gap-3">
@@ -1126,6 +1203,8 @@ export default function App() {
                     })}
                   </div>
                 )}
+                  </>
+                )}
               </div>
             )}
 
@@ -1378,6 +1457,21 @@ export default function App() {
               }}
               currentUser={currentUser}
               currentDiscount={quickDiscount}
+              isCaisseLocked={isCaisseLocked}
+              onToggleLock={() => {
+                if (isCaisseLocked) {
+                  if (currentUser) {
+                    setPinTargetUser(currentUser);
+                    setPinSuccessAction({ type: "unlock", user: currentUser });
+                  } else {
+                    setGlobalError("Sélectionnez d'abord un vendeur pour déverrouiller.");
+                    focusVendeurInput();
+                  }
+                } else {
+                  setIsCaisseLocked(true);
+                  setGlobalError("La caisse tactile a été verrouillée de sécurité.");
+                }
+              }}
             />
           )}
 
@@ -1521,6 +1615,32 @@ export default function App() {
 
           </div>
         </div>
+      )}
+
+      {/* Security Pin Checking Overlay Prompt Modal */}
+      {pinTargetUser && (
+        <PinAuthModal
+          isOpen={true}
+          targetUser={pinTargetUser}
+          onSuccess={() => {
+            if (pinSuccessAction) {
+              if (pinSuccessAction.type === "unlock") {
+                setIsCaisseLocked(false);
+                setGlobalError("");
+              } else if (pinSuccessAction.type === "switch_user") {
+                setCurrentUser(pinSuccessAction.user);
+                setIsCaisseLocked(false); // Valid login unlocks the register
+                setGlobalError("");
+              }
+            }
+            setPinTargetUser(null);
+            setPinSuccessAction(null);
+          }}
+          onClose={() => {
+            setPinTargetUser(null);
+            setPinSuccessAction(null);
+          }}
+        />
       )}
 
     </div>

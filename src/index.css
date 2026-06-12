@@ -15,3 +15,101 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Global Reset for Cash-Me Pearl Theme */
+html, body {
+  background-color: #070A13 !important;
+  color: #f1f5f9;
+}
+
+/* Magic glassmorphism container overrides */
+#viewport-ventes,
+#viewport-stocks,
+#viewport-stats,
+#unauthorized-stats-container,
+#rfid-badge-simulator-panel,
+#caisse-basket-container,
+div[id*="-container"]:not(.receipt-paper), 
+div[id*="-panel"]:not(.receipt-paper),
+.bg-white:not(.receipt-paper):not(.flat-ticket) {
+  background-color: rgba(17, 24, 39, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Header Text styling */
+h1, h2, h3, h4, h5, h6, 
+.text-[#2D3A30], 
+.text-slate-900,
+.text-slate-800 {
+  color: #a5f3fc !important;
+  font-family: "Space Grotesk", "Inter", sans-serif !important;
+}
+
+/* Paragraph and help texts */
+p, .text-slate-500, .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+/* Table controls and rows */
+table, tr {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+tr:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+td, th {
+  color: #f1f5f9 !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+th {
+  background-color: rgba(11, 15, 25, 0.8) !important;
+  color: #a5f3fc !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* Input Fields overrides */
+input:not([type="checkbox"]), select, textarea {
+  background-color: rgba(7, 10, 19, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+}
+input:not([type="checkbox"]):focus, select:focus, textarea:focus {
+  border: 1px solid rgba(34, 211, 238, 0.4) !important;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.15) !important;
+}
+
+/* Quick scan badge buttons, tables, forms */
+button[id^="stats-quick-badge-"], 
+.bg-[#F1F3EE], 
+.bg-slate-50, 
+.bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+button[id^="stats-quick-badge-"]:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Styled Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(7, 10, 19, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.25);
+}

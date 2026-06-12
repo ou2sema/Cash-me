@@ -2,6 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // 1. Global safety net - default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     // --- Robust Helper Functions (Null-Safe) ---
     function isSignedIn() {
       return request.auth != null;
@@ -28,36 +33,127 @@ service cloud.firestore {
       return isGerant() || isRole("serveur");
     }
 
-    // --- Collections Rules (Permissive fallbacks to support fallback operation when anonymous/custom auth fails) ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Entity Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(["uid", "nom", "email", "rfid_token", "role"])
+        && (data.keys().size() == 5 || (data.keys().size() == 6 && data.keys().hasAll(["pin_code"])))
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.nom is string && data.nom.size() >= 1 && data.nom.size() <= 128
+        && data.email is string && data.email.size() >= 1 && data.email.size() <= 256
+        && data.rfid_token is string && data.rfid_token.size() >= 1 && data.rfid_token.size() <= 128
+        && data.role is string && (data.role == "admin" || data.role == "gerant" || data.role == "serveur")
+        && (!data.keys().hasAll(["pin_code"]) || (data.pin_code is string && data.pin_code.size() == 4));
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(["id", "nom", "prix", "stock_actuel", "stock_alerte", "categorie"])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 100
+        && data.nom is string && data.nom.size() >= 1 && data.nom.size() <= 150
+        && (data.prix is number || data.prix is int) && data.prix >= 0
+        && (data.stock_actuel is number || data.stock_actuel is int)
+        && (data.stock_alerte is number || data.stock_alerte is int)
+        && data.categorie is string && data.categorie.size() >= 1 && data.categorie.size() <= 100
+        && (!data.keys().hasAll(["description"]) || (data.description is string && data.description.size() <= 1000))
+        && (!data.keys().hasAll(["image_url"]) || (data.image_url is string && data.image_url.size() <= 1000));
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(["id", "nom"]) && data.keys().size() == 2
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 100
+        && data.nom is string && data.nom.size() >= 1 && data.nom.size() <= 100;
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(["id", "salonName", "welcomeTitle", "welcomeSubtitle", "announcement", "showAnnouncement"])
+        && data.id is string
+        && data.salonName is string && data.salonName.size() <= 200
+        && data.welcomeTitle is string && data.welcomeTitle.size() <= 200
+        && data.welcomeSubtitle is string && data.welcomeSubtitle.size() <= 500
+        && data.announcement is string && data.announcement.size() <= 1000
+        && data.showAnnouncement is bool
+        && (!data.keys().hasAll(["logoUrl"]) || (data.logoUrl is string && data.logoUrl.size() <= 1000));
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(["id", "timestamp", "total", "user_id", "user_nom", "type", "status", "items"])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 100
+        && data.timestamp is int
+        && (data.total is number || data.total is int)
+        && data.user_id is string && data.user_id.size() >= 1 && data.user_id.size() <= 128
+        && data.user_nom is string && data.user_nom.size() >= 1 && data.user_nom.size() <= 128
+        && data.type is string && (data.type == "vente" || data.type == "achat" || data.type == "reajustement")
+        && data.status is string && (data.status == "completed" || data.status == "annulé" || data.status == "abandoned")
+        && (data.items is list);
+    }
+
+    function isValidInventoryLog(data) {
+      return data.keys().hasAll(["id", "product_id", "product_nom", "quantite_ajoutee", "date", "user_id", "user_nom", "action"])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 150
+        && data.product_id is string && data.product_id.size() >= 1 && data.product_id.size() <= 100
+        && data.product_nom is string && data.product_nom.size() >= 1 && data.product_nom.size() <= 150
+        && (data.quantite_ajoutee is number || data.quantite_ajoutee is int)
+        && data.date is string && data.date.size() >= 1 && data.date.size() <= 100
+        && data.user_id is string && data.user_id.size() >= 1 && data.user_id.size() <= 128
+        && data.user_nom is string && data.user_nom.size() >= 1 && data.user_nom.size() <= 128
+        && data.action is string && data.action.size() >= 1 && data.action.size() <= 50;
+    }
+
+    // --- Collections Rules ---
 
     // 1. Users Collection
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(userId) && (isAdmin() || (userId == request.auth.uid && isValidUser(request.resource.data) && request.resource.data.role == "serveur"));
+      allow update: if isSignedIn() && isValidId(userId) && (isAdmin() || (userId == request.auth.uid && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role));
+      allow delete: if isAdmin() && isValidId(userId);
     }
 
     // 2. Products Collection
     match /products/{productId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isGerant() && isValidId(productId) && isValidProduct(request.resource.data);
+      allow update: if isSignedIn() && isValidId(productId) && (
+        (isGerant() && isValidProduct(request.resource.data)) || 
+        (isServeur() && isValidProduct(request.resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock_actuel']))
+      );
+      allow delete: if isGerant() && isValidId(productId);
     }
 
-    // 2b. Categories Collection
+    // 3. Categories Collection
     match /categories/{categoryId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create, update: if isGerant() && isValidId(categoryId) && isValidCategory(request.resource.data);
+      allow delete: if isGerant() && isValidId(categoryId);
     }
 
-    // 2c. Settings Collection
+    // 4. Settings Collection
     match /settings/{settingsId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create, update: if isGerant() && isValidId(settingsId) && isValidSettings(request.resource.data);
+      allow delete: if isGerant() && isValidId(settingsId);
     }
 
-    // 3. Transactions Collection
+    // 5. Transactions Collection
     match /transactions/{transactionId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isServeur() && isValidId(transactionId) && isValidTransaction(request.resource.data) && request.resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(transactionId) && (
+        isGerant() && isValidTransaction(request.resource.data) && resource.data.status == "completed" && request.resource.data.status == "annulé"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "cancelled_by_id", "cancelled_by_nom", "cancelled_timestamp"])
+      );
+      allow delete: if false; // Immutable transaction files
     }
 
-    // 4. Inventory Logs Collection
+    // 6. Inventory Logs Collection
     match /inventory_logs/{logId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) && isValidInventoryLog(request.resource.data) && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if false; // Immutable logs
     }
   }
 }

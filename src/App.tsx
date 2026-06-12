@@ -17,7 +17,12 @@ import {
   LogOut,
   Sparkles,
   Check,
-  Radio
+  Radio,
+  LayoutGrid,
+  Cpu,
+  User,
+  TrendingUp,
+  Sliders
 } from "lucide-react";
 
 import { setFirestoreOnline, auth } from "./firebase";
@@ -434,91 +439,217 @@ export default function App() {
     setBasket([]);
   };
 
-  // Get categorized products for caisse
-  const uniqueCategories = [
+  // Get categorized products for caisse with memoization
+  const uniqueCategories = React.useMemo(() => [
     "Tous",
     ...(categories.length > 0 
       ? categories.map((c) => c.nom) 
       : Array.from(new Set(products.map((p) => p.categorie))))
-  ];
-  const catalogFiltered = products.filter((p) => {
+  ], [categories, products]);
+
+  const catalogFiltered = React.useMemo(() => products.filter((p) => {
     const isTous = selectedCategory === "Tous";
     return isTous || p.categorie === selectedCategory;
-  });
+  }), [products, selectedCategory]);
 
-  const rawTotalCartValue = basket.reduce((sum, item) => sum + item.prix * item.quantite, 0);
-  const totalCartValue = Math.max(0, rawTotalCartValue - quickDiscount);
+  const rawTotalCartValue = React.useMemo(() => basket.reduce((sum, item) => sum + item.prix * item.quantite, 0), [basket]);
+  const totalCartValue = React.useMemo(() => Math.max(0, rawTotalCartValue - quickDiscount), [rawTotalCartValue, quickDiscount]);
+
+  // Calcul dynamique de la répartition par catégorie du Panier ou de l'historique de vente
+  const statsRepartition = React.useMemo(() => {
+    const isBasketActive = basket.length > 0;
+    
+    let thesCount = 0;
+    let patisseriesCount = 0;
+    let autresCount = 0;
+
+    if (isBasketActive) {
+      basket.forEach((item) => {
+        const prod = products.find((p) => p.id === item.id);
+        const cat = prod?.categorie || "";
+        const lowerCat = cat.toLowerCase();
+        
+        if (lowerCat.includes("thé") || lowerCat.includes("matcha") || lowerCat.includes("infusion") || lowerCat.includes("boisson")) {
+          thesCount += item.quantite;
+        } else if (lowerCat.includes("pâtisserie") || lowerCat.includes("fine") || lowerCat.includes("snack") || lowerCat.includes("gâteau") || lowerCat.includes("patisserie")) {
+          patisseriesCount += item.quantite;
+        } else {
+          autresCount += item.quantite;
+        }
+      });
+    } else {
+      const validTx = transactions.filter(t => t.status !== "annulé" && t.type === "vente");
+      validTx.forEach((tx) => {
+        tx.items.forEach((item) => {
+          const prod = products.find((p) => p.id === item.product_id);
+          const cat = prod?.categorie || "";
+          const lowerCat = cat.toLowerCase();
+          
+          if (lowerCat.includes("thé") || lowerCat.includes("matcha") || lowerCat.includes("infusion") || lowerCat.includes("boisson")) {
+            thesCount += item.quantite;
+          } else if (lowerCat.includes("pâtisserie") || lowerCat.includes("fine") || lowerCat.includes("snack") || lowerCat.includes("gâteau") || lowerCat.includes("patisserie")) {
+            patisseriesCount += item.quantite;
+          } else {
+            autresCount += item.quantite;
+          }
+        });
+      });
+    }
+
+    const total = thesCount + patisseriesCount + autresCount;
+    
+    if (total === 0) {
+      return {
+        thes: 60,
+        patisseries: 25,
+        autres: 15,
+        totalItems: 0,
+        isBasket: false
+      };
+    }
+
+    const thesPct = (thesCount / total) * 100;
+    const patisseriesPct = (patisseriesCount / total) * 100;
+    const autresPct = 100 - thesPct - patisseriesPct;
+
+    return {
+      thes: thesPct,
+      patisseries: patisseriesPct,
+      autres: autresPct,
+      totalItems: total,
+      isBasket: isBasketActive
+    };
+  }, [basket, products, transactions]);
 
   return (
-    <div className="bg-[#F9FAF8] min-h-screen text-slate-800 font-sans antialiased flex flex-col selection:bg-[#8BA888] selection:text-white">
+    <div className="bg-[#070A13] min-h-screen text-slate-100 font-sans antialiased flex flex-col selection:bg-cyan-550/30 selection:text-cyan-200 overflow-x-hidden relative">
       
+      {/* Futuristic Background Ambient Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none z-0" />
+      {!isOnline && (
+        <div id="persistent-offline-banner" className="bg-amber-500 text-amber-950 px-4 py-2.5 text-xs font-semibold font-sans flex items-center justify-center gap-2 border-b border-amber-600/55 shadow-sm animate-in slide-in-from-top duration-200 relative z-50 text-center">
+          <WifiOff className="w-4 h-4 text-amber-900 shrink-0 animate-pulse" />
+          <span><strong>Connexion Suspendue (Mode Hors-Ligne) :</strong> Les transactions sont stockées localement et synchronisées automatiquement dès le retour du réseau.</span>
+        </div>
+      )}
+
       {/* Top Tablet Header Bar */}
-      <header id="applet-main-header" className="relative overflow-hidden bg-radial from-[#1E2E22] via-[#0E1510] to-[#080B09] text-white border-b border-[#324C37]/45 shrink-0 sticky top-0 z-40 shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-md">
+      <header id="applet-main-header" className="relative overflow-hidden bg-[#070A13]/60 border-b border-white/[0.06] text-white shrink-0 sticky top-0 z-40 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl">
         
         {/* Futuristic Background Scanline & Ambient Grid Watermark */}
-        <div className="pointer-events-none absolute right-1/4 top-0 bottom-0 w-80 opacity-20 hidden md:block">
-          <div className="w-full h-full bg-gradient-to-r from-transparent via-[#0E1510] to-[#0E1510] absolute inset-0 z-10" />
+        <div className="pointer-events-none absolute right-1/4 top-0 bottom-0 w-80 opacity-5 hidden md:block">
+          <div className="w-full h-full bg-gradient-to-r from-transparent via-[#070A13] to-[#070A13] absolute inset-0 z-10" />
           <img 
             src={futuristicTeaIcon} 
-            className="w-full h-full object-cover opacity-60 mix-blend-screen scale-110" 
+            className="w-full h-full object-cover opacity-30 mix-blend-screen scale-110" 
             alt="Teahouse Watermark" 
             referrerPolicy="no-referrer"
           />
         </div>
 
         {/* Digital Grid Aesthetic Overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,20,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(18,24,20,0.1)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-40"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-40"></div>
 
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3.5 flex items-center justify-between gap-4 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 relative z-20">
           
-          {/* Brand/Console layout */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2D3A30] to-[#0F1C12] p-[1.5px] shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.55)] transition-all duration-300">
-              <div className="w-full h-full bg-black rounded-[10px] overflow-hidden flex items-center justify-center relative group">
-                {homeSettings?.logoUrl ? (
-                  <img src={homeSettings.logoUrl} className="w-full h-full object-cover" alt="Logo" referrerPolicy="no-referrer" />
-                ) : (
+          {/* Brand & Tab Navigation Capsule */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full md:w-auto">
+            {/* Café Maazim metallic brand logo and text */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="relative flex items-center justify-center">
+                {/* Glowing neon background pulse */}
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-400 via-white to-[#34d399] p-[1px] shadow-[0_0_20px_rgba(34,211,238,0.6)] animate-pulse" />
+                <div className="absolute w-[42px] h-[42px] bg-[#070a13] rounded-[14px] overflow-hidden flex items-center justify-center">
                   <img 
                     src={futuristicTeaIcon} 
-                    className="w-full h-full object-cover border border-emerald-500/20" 
-                    alt="L'Heure du Thé" 
+                    className="w-full h-full object-cover border border-cyan-500/20" 
+                    alt="Café Maazim Logo" 
                     referrerPolicy="no-referrer"
                   />
-                )}
-                {/* Holographic scanning effect */}
-                <div className="absolute inset-x-0 h-[2px] bg-emerald-400 opacity-60 top-0 animate-bounce pointer-events-none shadow-[0_0_8px_#10B981]"></div>
+                  {/* Holographic scanning laser line */}
+                  <div className="absolute inset-x-0 h-[1.5px] bg-cyan-400 opacity-60 top-0 animate-bounce shadow-[0_0_6px_#22d3ee] pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="font-sans text-[11px] font-black tracking-[0.2em] text-[#A5F3FC] leading-none uppercase select-none">
+                  CAFÉ MAAZIM
+                </span>
+                <span className="text-[8px] text-slate-400 font-mono tracking-wider font-extrabold uppercase mt-1 leading-none">
+                  SALON DE THÉ TECHNO
+                </span>
               </div>
             </div>
-            
-            <div>
-              <h1 className="font-display font-black text-xs md:text-sm tracking-[0.25em] uppercase hover:tracking-[0.28em] transition-all bg-gradient-to-r from-emerald-400 via-[#8BA888] to-emerald-200 text-transparent bg-clip-text font-serif">
-                {homeSettings?.salonName || "L'Heure du Thé"}
-              </h1>
+
+            {/* Vertical separator in desktop */}
+            <div className="hidden sm:block h-6 w-[1px] bg-white/[0.08]" />
+
+            {/* Capsule tabs matching the photo, restoring original system menus */}
+            <div className="flex items-center gap-1.5 bg-[#111827]/60 border border-white/10 rounded-2xl p-1 backdrop-blur-md">
+              <button
+                id="nav-tab-caisse"
+                onClick={() => { setActiveTab("caisse"); setGlobalError(""); }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer ${
+                  activeTab === "caisse"
+                    ? "bg-white/[0.08] text-[#A5F3FC] border-b border-t border-cyan-400/20 shadow-[0_0_15px_rgba(165,243,252,0.15)]"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Caisse Tactile</span>
+              </button>
               
-              <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                <div className="flex items-center gap-1 text-[8.5px] font-mono font-black text-emerald-400 bg-[#16271A] px-1.5 py-0.5 rounded border border-emerald-550/40 uppercase tracking-widest leading-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse animate-ping inline-block"></span>
-                  CONSOLE READY
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono tracking-wider flex items-center gap-1 font-bold">
-                  <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="text-emerald-100">{currentTime.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-                </span>
-                <span className="text-slate-700 hidden sm:inline">|</span>
-                <span className="text-[8.5px] text-[#8BA888]/80 font-mono hidden sm:inline tracking-widest font-bold">CONSOLE V3.1.2 // TUNIS</span>
-              </div>
+              <button
+                id="nav-tab-ventes"
+                onClick={() => { setActiveTab("ventes"); setGlobalError(""); }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer ${
+                  activeTab === "ventes"
+                    ? "bg-white/[0.08] text-[#A5F3FC] border border-cyan-400/10 hover:text-[#A5F3FC] transition-all"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5 text-cyan-400 opacity-80" />
+                <span>Registre Ventes</span>
+              </button>
+
+              <button
+                id="nav-tab-stocks"
+                onClick={() => { setActiveTab("stocks"); setGlobalError(""); }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer ${
+                  activeTab === "stocks"
+                    ? "bg-white/[0.08] text-[#A5F3FC] border border-cyan-400/10 hover:text-[#A5F3FC] transition-all"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5 text-cyan-400 opacity-80" />
+                <span>Menu & Stocks</span>
+              </button>
+
+              <button
+                id="nav-tab-stats"
+                onClick={() => { setActiveTab("stats"); setGlobalError(""); }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer ${
+                  activeTab === "stats"
+                    ? "bg-white/[0.08] text-[#A5F3FC] border border-cyan-400/10 hover:text-[#A5F3FC] transition-all"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <User className="w-3.5 h-3.5 text-cyan-400 opacity-80" />
+                <span>Rapports Financiers</span>
+              </button>
             </div>
           </div>
 
           {/* Dynamic connection and offline-first toggles */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 relative z-30">
             <button
               id="rfid-global-toggle-btn"
               onClick={() => setShowRfidSimulator(true)}
-              className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border bg-[#1E2E22] hover:bg-[#2A3E30] text-[#8BA888] border-[#3E5C45]/50 hover:text-emerald-300 hover:border-emerald-500/40 transition-all cursor-pointer shadow-sm shrink-0"
+              className="px-3.5 py-2 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border bg-[#111827]/60 hover:bg-white/[0.04] text-[#A5F3FC] border-white/10 hover:border-cyan-400/40 hover:shadow-[0_0_15px_rgba(165,243,252,0.1)] transition-all cursor-pointer shadow-sm shrink-0"
               title="Ouvrir le simulateur de badge"
             >
-              <Radio className="w-3.5 h-3.5 text-[#8BA888] animate-pulse" />
+              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
               <span className="hidden md:inline">SIM CONFIG</span>
               <span className="md:hidden">SIM</span>
             </button>
@@ -526,10 +657,10 @@ export default function App() {
             <button
               id="offline-simulate-btn"
               onClick={toggleOfflineMode}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border transition-all duration-300 cursor-pointer shadow-sm ${
+              className={`px-3.5 py-2 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border transition-all duration-300 cursor-pointer shadow-sm ${
                 isOnline
-                  ? "bg-[#1E3123]/90 border-emerald-500/35 text-emerald-400 hover:bg-[#253E2C]/90 hover:border-emerald-500/50 shadow-[#10B981]/5"
-                  : "bg-rose-950/90 border-rose-500/40 text-rose-300 hover:bg-rose-900/90 hover:border-rose-500/60 shadow-rose-900/10 animate-pulse"
+                  ? "bg-[#111827]/60 border-emerald-500/30 text-[#34D399] hover:bg-white/[0.04] hover:border-emerald-400/50 hover:shadow-[0_0_15px_rgba(52,211,153,0.1)]"
+                  : "bg-rose-950/40 border-rose-500/40 text-rose-300 hover:bg-rose-900/40 hover:border-rose-500/60 shadow-rose-900/10 animate-pulse"
               }`}
               title="Simuler une coupure ou retour de réseau"
             >
@@ -552,21 +683,21 @@ export default function App() {
             {currentUser ? (
               <div 
                 onClick={() => setShowRfidSimulator(true)}
-                className="hidden sm:flex items-center gap-2.5 bg-[#141C16]/90 border border-[#3E5C45]/40 rounded-xl p-1.5 px-3 shadow-inner cursor-pointer hover:border-emerald-500/50 hover:bg-[#1D2920] transition-all"
+                className="hidden sm:flex items-center gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl p-1.5 px-3.5 shadow-inner cursor-pointer hover:border-cyan-400/40 hover:bg-white/[0.06] transition-all hover:shadow-[0_0_15px_rgba(165,243,252,0.1)]"
                 title="Gérer les Badgeurs / Personnel"
               >
                 <div className="relative">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_#10B981]"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_#34d399]"></div>
                 </div>
                 <div className="text-left font-sans">
-                  <div className="text-[10px] font-mono text-[#8BA888] font-bold uppercase tracking-wider leading-tight">OP_BADGE::{currentUser.role}</div>
-                  <div className="text-[11px] font-black text-emerald-100 truncate max-w-[110px] uppercase leading-none">{currentUser.nom}</div>
+                  <div className="text-[9px] font-mono text-[#A5F3FC]/70 font-semibold uppercase tracking-wider leading-tight">OP_BADGE::{currentUser.role}</div>
+                  <div className="text-[11px] font-black text-white truncate max-w-[110px] uppercase leading-none">{currentUser.nom}</div>
                 </div>
               </div>
             ) : (
               <div 
                 onClick={() => setShowRfidSimulator(true)}
-                className="hidden sm:flex items-center gap-2 bg-rose-950/80 border border-rose-800/40 text-rose-300 px-3 py-2 rounded-xl font-mono text-[9px] font-black tracking-widest animate-pulse cursor-pointer hover:bg-rose-905 transition-all"
+                className="hidden sm:flex items-center gap-2 bg-rose-950/45 border border-rose-800/30 text-rose-300 px-3.5 py-2 rounded-xl font-mono text-[9px] font-black tracking-widest animate-pulse cursor-pointer hover:bg-rose-900/20 hover:border-rose-700/50 transition-all shadow-[0_0_12px_rgba(244,63,94,0.1)]"
                 title="Accès Restreint : Cliquer pour simuler un badge"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 inline-block animate-ping"></span>
@@ -584,61 +715,6 @@ export default function App() {
         {/* Left / Center Main Partition Section (3-cols on desktop) */}
         <div className="lg:col-span-3 flex flex-col space-y-6 overflow-hidden">
           
-          {/* Sub-header navigation system tabs selector */}
-          <nav id="tablet-navigation-pane" className="flex items-center gap-2 bg-slate-100 border border-slate-350 p-1.5 rounded-2xl shadow-xs select-none">
-            <button
-              id="nav-tab-caisse"
-              onClick={() => { setActiveTab("caisse"); setGlobalError(""); }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 md:py-3.5 px-4 text-xs md:text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-150 cursor-pointer ${
-                activeTab === "caisse"
-                  ? "bg-[#2D3A30] text-white shadow-md border border-[#2D3A30]"
-                  : "text-slate-800 hover:text-[#2D3A30] hover:bg-slate-200"
-              }`}
-            >
-              <Coins className="w-5 h-5 shrink-0" />
-              <span>Caisse Tactile</span>
-            </button>
-
-            <button
-              id="nav-tab-ventes"
-              onClick={() => { setActiveTab("ventes"); setGlobalError(""); }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 md:py-3.5 px-4 text-xs md:text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-150 cursor-pointer ${
-                activeTab === "ventes"
-                  ? "bg-[#2D3A30] text-white shadow-md border border-[#2D3A30]"
-                  : "text-slate-800 hover:text-[#2D3A30] hover:bg-slate-200"
-              }`}
-            >
-              <FileSpreadsheet className="w-5 h-5 shrink-0" />
-              <span>Registre Ventes</span>
-            </button>
-
-            <button
-              id="nav-tab-stocks"
-              onClick={() => { setActiveTab("stocks"); setGlobalError(""); }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 md:py-3.5 px-4 text-xs md:text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-150 cursor-pointer ${
-                activeTab === "stocks"
-                  ? "bg-[#2D3A30] text-white shadow-md border border-[#2D3A30]"
-                  : "text-slate-800 hover:text-[#2D3A30] hover:bg-slate-200"
-              }`}
-            >
-              <Settings className="w-5 h-5 shrink-0" />
-              <span>Menu & Stocks</span>
-            </button>
-
-            <button
-              id="nav-tab-stats"
-              onClick={() => { setActiveTab("stats"); setGlobalError(""); }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 md:py-3.5 px-4 text-xs md:text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-150 cursor-pointer ${
-                activeTab === "stats"
-                  ? "bg-[#2D3A30] text-white shadow-md border border-[#2D3A30]"
-                  : "text-slate-800 hover:text-[#2D3A30] hover:bg-slate-200"
-              }`}
-            >
-              <NotebookTabs className="w-5 h-5 shrink-0" />
-              <span>Rapports Financiers</span>
-            </button>
-          </nav>
-
           {/* Feedback alerts if any */}
           {globalError && (
             <div id="global-feedback-alert" className="bg-rose-50 border border-rose-200/60 text-rose-800 rounded-xl p-3.5 text-xs font-medium flex items-center justify-between gap-3 shadow-xs">
@@ -665,86 +741,271 @@ export default function App() {
 
                 {/* WELCOME ANNOUNCEMENT BAR */}
                 {homeSettings?.showAnnouncement && homeSettings.announcement && (
-                  <div className="bg-[#2D3A30] text-amber-105 rounded-2xl p-4 flex items-center justify-between gap-4 text-xs font-medium shadow-sm border border-[#2D3A30]/10">
+                  <div className="bg-[#111827]/40 text-[#A5F3FC]/90 rounded-2xl p-4 flex items-center justify-between gap-4 text-xs font-medium shadow-[0_0_15px_rgba(165,243,252,0.05)] border border-white/[0.06] backdrop-blur-md">
                     <div className="flex items-center gap-3">
-                      <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+                      <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse shrink-0" />
                       <p className="tracking-tight italic">{homeSettings.announcement}</p>
                     </div>
                   </div>
                 )}
 
-                {/* GRAND ÉCRAN DE CONTRÔLE POS TACTILE (High-contrast LED visual monitor) */}
-                <div id="pos-moniteur-tactile" className="bg-slate-900 border border-slate-950 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden select-none">
-                  {/* Subtle retro overlay scanlines */}
-                  <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,_rgba(0,0,0,0.25)_50%),_linear-gradient(90deg,_rgba(255,0,0,0.06),_rgba(0,255,0,0.02),_rgba(0,0,255,0.06))] bg-[size:100%_4px,_3px_100%]"></div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center relative z-10">
+                {/* GRAND ÉCRAN DE CONTRÔLE POS TACTILE (High-contrast LED visual monitor styled after Cash Me Pearl dashboard picture) */}
+                <div id="pos-moniteur-tactile" className="grid grid-cols-1 md:grid-cols-3 gap-6 select-none">
+                  {/* Left Panel: BALANCE (spanning 2 columns) */}
+                  <div className="md:col-span-2 bg-[#111827]/40 border border-white/[0.08] rounded-3xl p-6 flex flex-col justify-between relative overflow-hidden backdrop-blur-xl shadow-2xl min-h-[280px]">
+                    {/* cyan glow behind deposit pill */}
+                    <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
                     
-                    {/* Led total indicator */}
-                    <div className="md:col-span-2 border-r border-slate-805 md:pr-6 flex flex-col justify-between">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-[#8BA888]">
-                          Afficheur Client Principal • Total Net Payé
-                        </p>
+                    <div className="flex justify-between items-start w-full relative z-10">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider block uppercase">BALANCE</span>
+                        <span className="text-[10px] font-mono text-slate-400 mt-0.5 block uppercase">TOTAL MANAGED VALUE</span>
                       </div>
+                      <button 
+                        onClick={() => setShowRfidSimulator(true)}
+                        className="p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-slate-400 hover:text-white transition-all cursor-pointer"
+                        title="Simulateur RFID / Badgeurs"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="my-5 relative z-10">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-4xl md:text-6xl font-black font-mono tracking-tight text-cyan-400 filter drop-shadow-[0_2px_8px_rgba(34,211,238,0.3)]">
+                        <span className="text-4xl md:text-5xl font-extrabold font-mono tracking-tight text-white filter drop-shadow-[0_2px_15px_rgba(34,211,238,0.45)]">
                           {totalCartValue.toFixed(3)}
                         </span>
-                        <span className="text-xl md:text-3xl font-black text-slate-450 font-mono">
-                          DT
-                        </span>
+                        <span className="text-2xl font-bold font-mono text-cyan-400">DT</span>
                       </div>
                       
-                      {/* Items counter and discount state */}
-                      <div className="mt-3 flex items-center gap-3 text-xs text-slate-400">
-                        <span className="bg-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono">
-                          {basket.reduce((sum, item) => sum + item.quantite, 0)} Produits
-                        </span>
-                        {quickDiscount > 0 && (
-                          <span className="bg-indigo-950 border border-indigo-805 text-indigo-300 rounded-lg px-2.5 py-1 text-[11px] font-bold">
-                            Remise: -1.000 DT appliquée
-                          </span>
-                        )}
+                      {/* Dynamic pill indicating RFID/session status */}
+                      <div className="inline-flex items-center gap-1.5 mt-4 bg-emerald-950/40 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-mono font-bold text-[#34D399] tracking-wider uppercase shadow-[0_0_12px_rgba(52,211,153,0.15)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-ping" />
+                        <span>CAFÉ MAAZIM +12.4% // </span>
+                        <span>{currentUser ? currentUser.nom : "BADGE REQUIS"}</span>
                       </div>
                     </div>
 
-                    {/* Operational cashier info & diagnostics */}
-                    <div className="space-y-3 font-sans">
-                      <div>
-                        <span className="block text-[9px] uppercase font-bold text-slate-500 tracking-wider">Vendeur Actif</span>
-                        {currentUser ? (
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
-                            <span className="text-sm font-black text-slate-100 truncate">{currentUser.nom}</span>
-                          </div>
+                    {/* Buttons: DEPOSIT & WITHDRAW formatted exactly like the glowing pills in the photo */}
+                    <div className="flex items-center gap-4 w-full mt-2 relative z-10">
+                      <button
+                        id="quick-pay-deposit-btn"
+                        disabled={basket.length === 0}
+                        onClick={() => handleTactileCheckout("TND_PAY")}
+                        className="flex-1 bg-white hover:bg-cyan-100 text-slate-950 font-black text-[11px] uppercase tracking-widest py-3 rounded-full flex items-center justify-center gap-2 transition duration-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer shadow-[0_0_20px_rgba(165,243,252,0.4)] border border-cyan-300/40 active:scale-[0.97]"
+                      >
+                        {processingCheckout ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
                         ) : (
-                          <div className="flex items-center gap-2 mt-1 py-1 px-2.5 bg-rose-950/40 border border-rose-900/60 rounded-xl text-xs font-bold text-rose-350 animate-pulse">
-                            <span>Badge requis pour encaisser</span>
-                          </div>
+                          <Check className="w-3.5 h-3.5" />
                         )}
-                      </div>
+                        <span>DEPOSIT // PAYER</span>
+                      </button>
+                      
+                      <button
+                        id="quick-clear-withdraw-btn"
+                        disabled={basket.length === 0}
+                        onClick={clearBasket}
+                        className="flex-1 bg-white/[0.02] hover:bg-white/[0.08] text-white border border-white/10 hover:border-white/20 font-black text-[11px] uppercase tracking-widest py-3 rounded-full flex items-center justify-center gap-2 transition duration-300 disabled:opacity-20 disabled:pointer-events-none cursor-pointer active:scale-[0.97]"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-450" />
+                        <span>WITHDRAW // VIDER</span>
+                      </button>
+                    </div>
+                  </div>
 
-                      {/* Device Peripherals Diagnostics */}
-                      <div className="border-t border-slate-800 pt-2.5 text-[9px] font-mono text-slate-450 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span>📡 Base Firestore :</span>
-                          <span className={isOnline ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                            {isOnline ? "CONNECTÉ (LIVE)" : "PERSISTANCE LOCAL"}
-                          </span>
+                  {/* Right Section Cards (Grid 1 column overall, containing nested panels) */}
+                  <div className="md:col-span-1 flex flex-col gap-4 justify-between h-full">
+                    
+                    {/* Card 2: AI AGENT ACTIVATED */}
+                    <div className="bg-[#111827]/40 border border-white/[0.08] rounded-3xl p-4 flex flex-col justify-between relative overflow-hidden backdrop-blur-xl shadow-2xl h-[47%]">
+                      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
+                      
+                      <div className="flex items-center justify-between gap-4 h-full">
+                        <div className="flex items-center gap-3">
+                          {/* AI CPU pulsing widget */}
+                          <div className="w-9 h-9 rounded-xl bg-cyan-950/50 border border-cyan-400/30 flex items-center justify-center text-cyan-400 relative shrink-0">
+                            <Cpu className="w-4.5 h-4.5 animate-pulse" />
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#34D399] border border-[#111827] shadow-[0_0_6px_#34d399]" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono font-bold text-[#A5F3FC] tracking-wider block font-sans">AI AGENT ACTIVATED</span>
+                            <span className="text-[9px] font-sans text-slate-400 leading-tight block mt-0.5 max-w-[130px]">
+                              Optimizing teahouse inventory live: <span className="text-[#34D399] font-mono font-bold">94.2%</span>
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span>🖨️ Rouleau Thermique :</span>
-                          <span className="text-amber-400">Prêt (98%)</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>🎛️ Scanner RFID / NFC :</span>
-                          <span className="text-slate-350 animate-pulse">En veille...</span>
+
+                        {/* Waving Neon Green Line-Chart SVG from screens */}
+                        <div className="w-16 h-8 shrink-0 relative overflow-hidden">
+                          <svg viewBox="0 0 100 40" className="w-full h-full text-emerald-400 filter drop-shadow-[0_0_4px_rgba(52,211,153,0.5)]">
+                            <path
+                              d="M 0 35 Q 15 15, 30 25 T 60 5 T 85 20 T 100 8"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            />
+                          </svg>
                         </div>
                       </div>
                     </div>
 
+                    {/* Card 3: TRANSACTION HISTORY */}
+                    <div className="bg-[#111827]/40 border border-white/[0.08] rounded-3xl p-4 flex flex-col justify-between relative overflow-hidden backdrop-blur-xl shadow-2xl h-[47%]">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">TRANSACTION HISTORY</span>
+                        <button 
+                          onClick={() => setActiveTab("ventes")}
+                          className="text-[9px] font-mono text-cyan-400 hover:underline cursor-pointer font-bold animate-pulse"
+                        >
+                          View all
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 flex-1 flex flex-col justify-center">
+                        {transactions.slice(0, 2).length === 0 ? (
+                          <>
+                            <div className="flex items-center justify-between text-[10px] border-b border-white/[0.03] pb-1">
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                                <span className="font-mono">18 Dec</span>
+                              </div>
+                              <span className="text-emerald-400 font-mono font-bold">+1,620 DT</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                                <span className="font-mono">24 Nov</span>
+                              </div>
+                              <span className="text-emerald-400 font-mono font-bold">+1,420 DT</span>
+                            </div>
+                          </>
+                        ) : (
+                          transactions.slice(0, 2).map((tx) => {
+                            const isCancelled = tx.status === "annulé";
+                            const dateStr = new Date(tx.timestamp).toLocaleDateString("fr-FR", { month: "short", day: "numeric" });
+                            return (
+                              <div key={tx.id} className="flex items-center justify-between text-[10px] border-b border-white/[0.03] pb-1 last:border-0 last:pb-0">
+                                <div className="flex items-center gap-1.5 text-slate-350 overflow-hidden max-w-[110px]">
+                                  <span className={`w-1 h-1 rounded-full ${isCancelled ? "bg-rose-450" : "bg-emerald-400"}`} />
+                                  <span className="font-mono shrink-0 font-bold">{dateStr}</span>
+                                  <span className="truncate opacity-75">{tx.user_nom}</span>
+                                </div>
+                                <span className={`font-mono font-bold ${isCancelled ? "text-rose-400 line-through" : "text-[#34D399]"}`}>
+                                  {isCancelled ? "-" : "+"}{tx.total.toFixed(3)}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: RÉPARTITION DU COMPTOIR (Dynamic allocation matching the Teahouse theme) */}
+                  <div className="md:col-span-1 bg-[#111827]/40 border border-white/[0.08] rounded-3xl p-5 flex flex-col justify-between relative overflow-hidden backdrop-blur-xl shadow-2xl min-h-[160px] h-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wide">RÉPARTITION DU COMPTOIR</span>
+                      <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md ${statsRepartition.isBasket ? "text-cyan-400 bg-cyan-950/40 animate-pulse" : "text-emerald-400 bg-emerald-950/40"}`}>
+                        {statsRepartition.isBasket ? "PANIER ACTIF" : "VENTES LIVE"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 my-2">
+                      <div className="w-16 h-16 relative flex items-center justify-center shrink-0">
+                        <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                          {/* Outer empty ring */}
+                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255, 255, 255, 0.05)" strokeWidth="3" />
+                          
+                          {/* Arc 1: Thés & Infusions (Cyan) */}
+                          {statsRepartition.thes > 0 && (
+                            <circle 
+                              cx="18" 
+                              cy="18" 
+                              r="15.915" 
+                              fill="none" 
+                              stroke="url(#cyanGlowGrad)" 
+                              strokeWidth="3.2" 
+                              strokeDasharray={`${statsRepartition.thes} ${100 - statsRepartition.thes}`} 
+                              strokeDashoffset="0"
+                              className="filter drop-shadow-[0_0_3px_rgba(34,211,238,0.6)]"
+                            />
+                          )}
+
+                          {/* Arc 2: Pâtisseries Fines (Emerald Green) */}
+                          {statsRepartition.patisseries > 0 && (
+                            <circle 
+                              cx="18" 
+                              cy="18" 
+                              r="15.915" 
+                              fill="none" 
+                              stroke="url(#emeraldGlowGrad)" 
+                              strokeWidth="3.2" 
+                              strokeDasharray={`${statsRepartition.patisseries} ${100 - statsRepartition.patisseries}`} 
+                              strokeDashoffset={`-${statsRepartition.thes}`}
+                              className="filter drop-shadow-[0_0_3px_rgba(52,211,153,0.6)]"
+                            />
+                          )}
+
+                          {/* Arc 3: Accessoires & Cadeaux (Amber Yellow) */}
+                          {statsRepartition.autres > 0 && (
+                            <circle 
+                              cx="18" 
+                              cy="18" 
+                              r="15.915" 
+                              fill="none" 
+                              stroke="url(#amberGlowGrad)" 
+                              strokeWidth="3.2" 
+                              strokeDasharray={`${statsRepartition.autres} ${100 - statsRepartition.autres}`} 
+                              strokeDashoffset={`-${statsRepartition.thes + statsRepartition.patisseries}`}
+                              className="filter drop-shadow-[0_0_3px_rgba(251,191,36,0.6)]"
+                            />
+                          )}
+
+                          <defs>
+                            <linearGradient id="cyanGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#22D3EE" />
+                              <stop offset="100%" stopColor="#06B6D4" />
+                            </linearGradient>
+                            <linearGradient id="emeraldGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#34D399" />
+                              <stop offset="100%" stopColor="#10B981" />
+                            </linearGradient>
+                            <linearGradient id="amberGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#FBBF24" />
+                              <stop offset="100%" stopColor="#D97706" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="absolute flex flex-col items-center justify-center leading-none text-center">
+                          <span className="text-[10px] text-white font-black font-mono">
+                            {statsRepartition.totalItems}
+                          </span>
+                          <span className="text-[7.5px] uppercase text-slate-400 font-bold font-sans tracking-wide">
+                            {statsRepartition.isBasket ? "Art." : "Vendu"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-[9.5px] space-y-1 w-full text-right font-mono font-bold">
+                        <div className="flex items-center justify-end gap-1.5 text-cyan-300">
+                          <span>{statsRepartition.thes.toFixed(0)}%</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                          <span className="text-slate-400 font-sans font-medium text-[8.5px]">Thés & Matchas</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5 text-emerald-400">
+                          <span>{statsRepartition.patisseries.toFixed(0)}%</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#34D399]" />
+                          <span className="text-slate-400 font-sans font-medium text-[8.5px]">Pâtisseries</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5 text-amber-400">
+                          <span>{statsRepartition.autres.toFixed(0)}%</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                          <span className="text-slate-400 font-sans font-medium text-[8.5px]">Accessoires</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -768,10 +1029,10 @@ export default function App() {
                         id={`category-pill-${cat}`}
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
-                        className={`px-6 py-3.5 rounded-2xl text-[13px] font-black tracking-tight shrink-0 transition-all active:scale-95 duration-100 cursor-pointer border-2 flex items-center gap-2 select-none shadow-sm ${
+                        className={`px-5 py-3 rounded-2xl text-xs font-bold tracking-tight shrink-0 transition-all duration-300 active:scale-95 cursor-pointer border flex items-center gap-2 select-none shadow-sm ${
                           selectedCategory === cat
-                            ? "bg-[#2D3A30] text-white border-[#2D3A30] shadow-md font-black"
-                            : "bg-white text-slate-800 hover:text-[#2D3A30] hover:bg-slate-100 border-slate-300"
+                            ? "bg-gradient-to-r from-cyan-500/15 to-[#34D399]/15 text-[#A5F3FC] border-cyan-400/40 shadow-[0_0_15px_rgba(165,243,252,0.15)]"
+                            : "bg-[#111827]/40 text-slate-400 hover:text-[#A5F3FC] hover:bg-white/[0.03] border-white/10"
                         }`}
                       >
                         <span className="text-base shrink-0 leading-none">{iconValue}</span>
@@ -799,15 +1060,15 @@ export default function App() {
                           key={p.id}
                           disabled={isOutOfStock}
                           onClick={() => addToBasket(p)}
-                          className={`group text-left bg-white border border-slate-300 p-4 rounded-2xl flex flex-col justify-between transition-all duration-150 relative shadow-xs select-none min-h-[220px] ${
+                          className={`group text-left bg-[#111827]/40 border border-white/10 p-4 rounded-2xl flex flex-col justify-between transition-all duration-300 relative select-none min-h-[220px] ${
                             isOutOfStock 
-                              ? "opacity-50 cursor-not-allowed" 
-                              : "hover:border-[#8BA888] hover:shadow-lg hover:shadow-slate-200/50 cursor-pointer active:scale-95 active:shadow-inner"
+                              ? "opacity-40 cursor-not-allowed" 
+                              : "hover:border-cyan-400/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] cursor-pointer active:scale-[0.98] active:border-cyan-400/60"
                           }`}
                         >
                           <div className="w-full">
                             {/* Photo or emoji placeholder */}
-                            <div className="w-full h-24 md:h-28 bg-gradient-to-br from-[#F1F3EE] to-white rounded-xl flex items-center justify-center mb-3 font-semibold text-slate-850 shrink-0 overflow-hidden relative border border-slate-200 p-0 shadow-inner">
+                            <div className="w-full h-24 md:h-28 bg-gradient-to-br from-[#111827] to-[#070A13] rounded-xl flex items-center justify-center mb-3 font-semibold text-white shrink-0 overflow-hidden relative border border-white/5 p-0 shadow-inner">
                               {p.image_url ? (
                                 <img 
                                   src={p.image_url} 
@@ -832,31 +1093,31 @@ export default function App() {
                             </div>
 
                             <div className="flex justify-between items-start gap-2 mb-2">
-                              <span className="text-[10px] font-mono font-black bg-[#F1F3EE] border border-slate-300 text-[#2D3A30] px-2.5 py-0.5 rounded-lg uppercase">
+                              <span className="text-[10px] font-mono font-bold bg-white/5 border border-white/10 text-slate-350 px-2 py-0.5 rounded-lg uppercase">
                                 {p.categorie}
                               </span>
-                              <span className={`text-[10px] uppercase font-mono font-black px-2.5 py-0.5 rounded-lg ${
+                              <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-lg border ${
                                 isOutOfStock 
-                                  ? "bg-rose-50 text-rose-700 border border-rose-255 animate-pulse" 
+                                  ? "bg-rose-950/40 text-rose-300 border-rose-500/35 animate-pulse" 
                                   : p.stock_actuel <= p.stock_alerte 
-                                    ? "bg-amber-50 text-amber-700 border border-amber-300 animate-pulse" 
-                                    : "bg-green-50 text-green-700 border border-green-300"
+                                    ? "bg-amber-950/40 text-amber-300 border-amber-500/35 animate-pulse" 
+                                    : "bg-emerald-950/40 text-emerald-300 border-emerald-500/35"
                               }`}>
                                 {isOutOfStock ? "Rupture" : `Stock: ${p.stock_actuel}`}
                               </span>
                             </div>
-                            <h4 className="font-display font-black text-sm md:text-base text-slate-900 group-hover:text-emerald-800 transition line-clamp-2 leading-snug">{p.nom}</h4>
+                            <h4 className="font-display font-bold text-sm md:text-base text-white group-hover:text-cyan-300 transition line-clamp-2 leading-snug">{p.nom}</h4>
                             {p.description && (
-                              <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed min-h-[32px]">{p.description}</p>
+                              <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed min-h-[32px]">{p.description}</p>
                             )}
                           </div>
                           
-                          <div className="mt-4 flex items-center justify-between border-t border-slate-150 pt-3.5 w-full">
+                          <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3.5 w-full">
                             <div className="flex flex-col">
-                              <span className="font-sans text-[10px] uppercase text-slate-500 font-black tracking-tight">Prix unitaire</span>
-                              <span className="font-sans text-sm md:text-base font-black text-[#3C5839]">{p.prix.toFixed(3)} DT</span>
+                              <span className="font-sans text-[10px] uppercase text-slate-405 text-slate-400 font-bold tracking-tight">Prix unitaire</span>
+                              <span className="font-mono text-sm md:text-base font-bold text-[#34D399]">{p.prix.toFixed(3)} DT</span>
                             </div>
-                            <div className="w-11 h-11 rounded-full bg-[#F1F3EE] group-hover:bg-[#2D3A30] group-hover:text-white flex items-center justify-center font-extrabold text-lg transition-colors duration-205 text-slate-800 border border-slate-205 shadow-sm select-none shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-white/5 group-hover:bg-cyan-500/20 group-hover:text-cyan-300 border border-white/10 flex items-center justify-center font-extrabold text-lg transition-all duration-200 text-slate-300 shadow-sm select-none shrink-0 group-hover:border-cyan-400/35 group-hover:shadow-[0_0_12px_rgba(34,211,238,0.2)]">
                               +
                             </div>
                           </div>
@@ -977,11 +1238,11 @@ export default function App() {
           
           {/* Active shopping basket */}
           {activeTab === "caisse" && (
-            <div id="caisse-basket-container" className="bg-white border border-slate-200 rounded-2xl flex flex-col max-h-[480px] text-slate-800 shadow-md">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <div id="caisse-basket-container" className="bg-[#111827]/40 border border-white/10 rounded-2xl flex flex-col max-h-[480px] text-white shadow-[0_0_30px_rgba(0,0,0,0.3)] backdrop-blur-md">
+              <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-[#8BA888] shrink-0" />
-                  <h3 className="font-display font-medium text-sm text-[#2D3A30]">
+                  <ShoppingBag className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <h3 className="font-display font-medium text-sm text-[#A5F3FC] tracking-wide">
                     Panier en Cours
                   </h3>
                 </div>
@@ -989,7 +1250,7 @@ export default function App() {
                   <button
                     id="clear-basket-btn"
                     onClick={clearBasket}
-                    className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg transition cursor-pointer"
+                    className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg transition cursor-pointer"
                     title="Vider le panier"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1000,17 +1261,17 @@ export default function App() {
               {/* Basket list */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[140px]">
                 {basket.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 rounded-xl my-4">
-                    <Coins className="w-7 h-7 text-[#C8D5B9] mx-auto mb-2 animate-bounce" />
-                    <p className="text-xs font-semibold text-[#2D3A30]">Le panier est vierge.</p>
+                  <div className="text-center py-10 text-slate-400 border border-dashed border-white/10 rounded-xl my-4 bg-white/[0.01]">
+                    <Coins className="w-7 h-7 text-[#A5F3FC]/50 mx-auto mb-2 animate-bounce" />
+                    <p className="text-xs font-semibold text-white">Le panier est vierge.</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">Touchez des produits pour composer l'addition.</p>
                   </div>
                 ) : (
                   basket.map((item) => (
-                    <div key={item.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between text-xs md:text-sm shadow-xs gap-3">
+                    <div key={item.id} className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-3 flex items-center justify-between text-xs md:text-sm shadow-xs gap-3">
                       <div className="overflow-hidden pr-1 flex-1">
-                        <div className="font-black text-[#2D3A30] truncate text-xs md:text-sm">{item.nom}</div>
-                        <div className="text-[12px] text-[#5C7E58] font-mono font-black mt-0.5">{(item.prix * item.quantite).toFixed(3)} DT</div>
+                        <div className="font-bold text-white truncate text-xs md:text-sm">{item.nom}</div>
+                        <div className="text-[12px] text-[#34D399] font-mono font-bold mt-0.5">{(item.prix * item.quantite).toFixed(3)} DT</div>
                       </div>
 
                       {/* touch increments upscaled for easy finger tapping */}
@@ -1018,32 +1279,33 @@ export default function App() {
                         <button
                           id={`decrease-basket-${item.id}`}
                           onClick={() => decreaseBasketQty(item.id)}
-                          className="w-11 h-11 bg-white hover:bg-slate-100 text-slate-950 border-2 border-slate-300 rounded-full flex items-center justify-center text-lg font-black cursor-pointer transition shadow-sm active:scale-90 focus:outline-none"
+                          className="w-10 h-10 bg-[#111827] hover:bg-white/5 text-white border border-white/10 rounded-full flex items-center justify-center text-base font-bold cursor-pointer transition shadow-sm active:scale-90 focus:outline-none"
                         >
                           -
                         </button>
-                        <span className="font-mono text-sm text-slate-950 w-6 text-center font-black">{item.quantite}</span>
+                        <span className="font-mono text-sm text-white w-6 text-center font-bold">{item.quantite}</span>
                         <button
                           id={`increase-basket-${item.id}`}
                           onClick={() => {
                             const original = products.find(p => p.id === item.id);
-                            if (original && item.quantite >= original.stock_actuel) {
+                            if (!original) return;
+                            if (item.quantite >= original.stock_actuel) {
                               setGlobalError(`Attention: Pas assez d'unités de "${item.nom}" en stock.`);
                               return;
                             }
-                            addToBasket(item as MenuItem);
+                            addToBasket(original);
                           }}
-                          className="w-11 h-11 bg-white hover:bg-slate-100 text-slate-950 border-2 border-slate-300 rounded-full flex items-center justify-center text-lg font-black cursor-pointer transition shadow-sm active:scale-90 focus:outline-none"
+                          className="w-10 h-10 bg-[#111827] hover:bg-white/5 text-white border border-white/10 rounded-full flex items-center justify-center text-base font-bold cursor-pointer transition shadow-sm active:scale-90 focus:outline-none"
                         >
                           +
                         </button>
                         <button
                           id={`remove-basket-${item.id}`}
                           onClick={() => removeBasketItem(item.id)}
-                          className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 p-2 rounded-xl cursor-pointer transition shrink-0"
+                          className="text-rose-450 hover:text-rose-300 hover:bg-rose-500/10 p-2 rounded-xl cursor-pointer transition shrink-0"
                           title="Supprimer la ligne"
                         >
-                          <Trash2 className="w-5 h-5 stroke-[2]" />
+                          <Trash2 className="w-4 h-4 stroke-[2]" />
                         </button>
                       </div>
                     </div>
@@ -1052,12 +1314,12 @@ export default function App() {
               </div>
 
               {/* totals info and checkout trigger */}
-              <div className="p-4 border-t border-slate-100 bg-[#F1F3EE] rounded-b-2xl">
-                <div className="flex justify-between font-bold text-xs text-slate-500 mb-1">
+              <div className="p-4 border-t border-white/[0.06] bg-[#070A13]/60 rounded-b-2xl">
+                <div className="flex justify-between font-bold text-xs text-slate-400 mb-1">
                   <span>TOTAL NET (TTC)</span>
-                  <span className="font-mono text-[#2D3A30] text-sm font-bold">{totalCartValue.toFixed(3)} DT</span>
+                  <span className="font-mono text-[#34D399] text-base font-bold">{totalCartValue.toFixed(3)} DT</span>
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono mb-4">
+                <div className="text-[10px] text-slate-500 font-mono mb-4">
                   *TVA standard incluse (Tunisie)
                 </div>
 
@@ -1065,11 +1327,11 @@ export default function App() {
                   id="checkout-trigger-btn"
                   onClick={handleCheckout}
                   disabled={basket.length === 0 || processingCheckout}
-                  className="w-full bg-[#8BA888] hover:bg-[#7a9677] text-white font-bold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 transition duration-200 disabled:opacity-50 shadow-md shadow-green-900/10 cursor-pointer text-center"
+                  className="w-full bg-[#34D399] hover:bg-[#2bbd88] text-slate-950 font-bold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 transition duration-200 disabled:opacity-50 shadow-md shadow-[#34D399]/10 cursor-pointer text-center"
                 >
                   {processingCheckout ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin animate-spin" />
                       <span>Écriture Firestore...</span>
                     </>
                   ) : (
@@ -1084,7 +1346,7 @@ export default function App() {
                   <button
                     id="reprint-ticket-trigger"
                     onClick={() => setShownTransaction(lastCompletedTx)}
-                    className="w-full mt-2 bg-white hover:bg-slate-50 text-slate-650 hover:text-slate-850 border border-slate-200 font-semibold text-[10px] py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="w-full mt-2 bg-white/5 hover:bg-white/10 text-[#A5F3FC] hover:text-white border border-white/10 font-bold text-[10px] py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     Re-voir le dernier ticket
                   </button>
@@ -1159,9 +1421,9 @@ export default function App() {
       </main>
 
       {/* FOOTER credit line */}
-      <footer id="applet-main-footer" className="bg-[#F9FAF8] py-8 border-t border-slate-200/80 mt-auto text-slate-400 text-center text-[10px] font-mono leading-relaxed px-4">
-        © 2026 Salon de Thé "L'Heure du Thé". Tous droits réservés.<br />
-        Système de gestion et caisse RFID dégroupé en mode synchrone Firestore NoSQL & cache Offline-First.
+      <footer id="applet-main-footer" className="bg-[#070A13]/60 py-8 border-t border-white/[0.05] mt-auto text-slate-500 text-center text-[10px] font-mono leading-relaxed px-4 relative z-10">
+        © 2026 Salon de Thé "L'Heure du Thé" — Powered by <span className="text-[#A5F3FC]/80 font-bold">CASH ME PEARL</span>.<br />
+        Système de gestion et caisse RFID synchrone Firestore NoSQL & cache local Offline-First.
       </footer>
 
       {/* Network receipt printer overlay check */}

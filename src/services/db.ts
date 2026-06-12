@@ -13,7 +13,8 @@ import {
   increment,
   query,
   orderBy,
-  limit
+  limit,
+  runTransaction
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { MenuItem, TeaRoomUser, TransactionRecord, BasketItem, InventoryLogItem, CategoryItem, HomeSettings } from "../types";
@@ -264,73 +265,93 @@ export function listenUsers(onData: (users: TeaRoomUser[]) => void, onError: (er
   );
 }
 
-// BATCH TRANSACTION FLOW (Checkout cart, decrement stock counts in batch, audit trace logs)
+// BATCH TRANSACTION FLOW (Checkout cart, decrement stock counts in transaction, audit trace logs)
 export async function checkoutBasket(
   basket: BasketItem[],
   total: number,
   currentUser: TeaRoomUser
 ): Promise<string> {
-  const batch = writeBatch(db);
-  const txId = `tx_${Date.now()}`;
-  
   // 1. Validate Basket Length
   if (basket.length === 0) {
     throw new Error("Le panier est vide.");
   }
   
-  // 2. Map items
-  const items = basket.map(item => ({
-    product_id: item.id,
-    product_nom: item.nom,
-    prix_unitaire: item.prix,
-    quantite: item.quantite
-  }));
-  
-  // 3. Prepare Transaction Documents
-  const txRecord: TransactionRecord = {
-    id: txId,
-    timestamp: Date.now(),
-    total,
-    user_id: currentUser.uid,
-    user_nom: currentUser.nom,
-    rfid_token: currentUser.rfid_token,
-    type: "vente",
-    status: "completed",
-    items
-  };
-  
-  const txDocRef = doc(db, "transactions", txId);
-  batch.set(txDocRef, txRecord);
-  
-  // 4. Update stocks and create individual inventory logs
-  for (const item of basket) {
-    const prodDocRef = doc(db, "products", item.id);
-    // atomic decrement
-    batch.update(prodDocRef, {
-      stock_actuel: increment(-item.quantite)
-    });
-    
-    // audit inventory trace log
-    const logId = `log_${Date.now()}_${item.id}`;
-    const logDocRef = doc(db, "inventory_logs", logId);
-    const logRecord: InventoryLogItem = {
-      id: logId,
-      product_id: item.id,
-      product_nom: item.nom,
-      quantite_ajoutee: -item.quantite,
-      date: new Date().toISOString(),
-      user_id: currentUser.uid,
-      user_nom: currentUser.nom,
-      action: "vente"
-    };
-    batch.set(logDocRef, logRecord);
-  }
+  const txId = `tx_${Date.now()}`;
   
   try {
-    await batch.commit();
+    await runTransaction(db, async (txn) => {
+      // Read all products involved first to verify stock and fulfill Firestore read-before-write requirement
+      const productsData: { ref: any; currentStock: number; id: string; nom: string }[] = [];
+      for (const item of basket) {
+        const prodDocRef = doc(db, "products", item.id);
+        const prodSnap = await txn.get(prodDocRef);
+        if (!prodSnap.exists()) {
+          throw new Error(`Le produit "${item.nom}" n'existe pas.`);
+        }
+        const prodData = prodSnap.data() as MenuItem;
+        const currentStock = prodData.stock_actuel ?? 0;
+        if (currentStock < item.quantite) {
+          throw new Error(`Stock insuffisant pour ${item.nom} : disponible ${currentStock}, requis ${item.quantite}`);
+        }
+        productsData.push({
+          ref: prodDocRef,
+          currentStock,
+          id: item.id,
+          nom: item.nom
+        });
+      }
+
+      // Prepare items for transaction record
+      const items = basket.map(item => ({
+        product_id: item.id,
+        product_nom: item.nom,
+        prix_unitaire: item.prix,
+        quantite: item.quantite
+      }));
+
+      // Prepare transaction record
+      const txRecord: TransactionRecord = {
+        id: txId,
+        timestamp: Date.now(),
+        total,
+        user_id: currentUser.uid,
+        user_nom: currentUser.nom,
+        rfid_token: currentUser.rfid_token,
+        type: "vente",
+        status: "completed",
+        items
+      };
+
+      const txDocRef = doc(db, "transactions", txId);
+      txn.set(txDocRef, txRecord);
+
+      // Update stocks and inventory logs
+      for (const prod of productsData) {
+        const item = basket.find(b => b.id === prod.id)!;
+        txn.update(prod.ref, {
+          stock_actuel: prod.currentStock - item.quantite
+        });
+
+        // Audit inventory trace log
+        const logId = `log_${Date.now()}_${prod.id}`;
+        const logDocRef = doc(db, "inventory_logs", logId);
+        const logRecord: InventoryLogItem = {
+          id: logId,
+          product_id: prod.id,
+          product_nom: prod.nom,
+          quantite_ajoutee: -item.quantite,
+          date: new Date().toISOString(),
+          user_id: currentUser.uid,
+          user_nom: currentUser.nom,
+          action: "vente"
+        };
+        txn.set(logDocRef, logRecord);
+      }
+    });
+    
     return txId;
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, "transactions & stock updates");
+    handleFirestoreError(error, OperationType.WRITE, "transactions & stock updates via transaction");
     throw error;
   }
 }
@@ -340,41 +361,62 @@ export async function cancelTransaction(
   transaction: TransactionRecord,
   authorizedBy: TeaRoomUser
 ): Promise<void> {
-  const batch = writeBatch(db);
   const txRef = doc(db, "transactions", transaction.id);
   
-  // 1. Update status to 'annulé' and log cancellation details
-  batch.update(txRef, {
-    status: "annulé",
-    cancelled_by_id: authorizedBy.uid,
-    cancelled_by_nom: authorizedBy.nom,
-    cancelled_timestamp: Date.now()
-  });
-
-  // 2. Replenish product stocks & log positive inventory changes
-  for (const item of transaction.items) {
-    const prodDocRef = doc(db, "products", item.product_id);
-    batch.update(prodDocRef, {
-      stock_actuel: increment(item.quantite)
-    });
-
-    const logId = `log_${Date.now()}_cancel_${item.product_id}`;
-    const logDocRef = doc(db, "inventory_logs", logId);
-    const logRecord: InventoryLogItem = {
-      id: logId,
-      product_id: item.product_id,
-      product_nom: item.product_nom,
-      quantite_ajoutee: item.quantite,
-      date: new Date().toISOString(),
-      user_id: authorizedBy.uid,
-      user_nom: authorizedBy.nom,
-      action: "ajustement"
-    };
-    batch.set(logDocRef, logRecord);
-  }
-
   try {
-    await batch.commit();
+    await runTransaction(db, async (txn) => {
+      const txSnap = await txn.get(txRef);
+      if (!txSnap.exists()) {
+        throw new Error("La transaction n'existe pas.");
+      }
+      if (txSnap.data()?.status === "annulé") {
+        throw new Error("Cette transaction a déjà été annulée.");
+      }
+
+      // Read current products to safeguard correct starting values
+      const productsData: { ref: any; currentStock: number; id: string; nom: string }[] = [];
+      for (const item of transaction.items) {
+        const prodDocRef = doc(db, "products", item.product_id);
+        const prodSnap = await txn.get(prodDocRef);
+        const currentStock = prodSnap.exists() ? (prodSnap.data() as MenuItem).stock_actuel ?? 0 : 0;
+        productsData.push({
+          ref: prodDocRef,
+          currentStock,
+          id: item.product_id,
+          nom: item.product_nom
+        });
+      }
+
+      // Update status to 'annulé' and log cancellation details
+      txn.update(txRef, {
+        status: "annulé",
+        cancelled_by_id: authorizedBy.uid,
+        cancelled_by_nom: authorizedBy.nom,
+        cancelled_timestamp: Date.now()
+      });
+
+      // Replenish product stocks & log positive inventory changes
+      for (const prod of productsData) {
+        const item = transaction.items.find(i => i.product_id === prod.id)!;
+        txn.update(prod.ref, {
+          stock_actuel: prod.currentStock + item.quantite
+        });
+
+        const logId = `log_${Date.now()}_cancel_${prod.id}`;
+        const logDocRef = doc(db, "inventory_logs", logId);
+        const logRecord: InventoryLogItem = {
+          id: logId,
+          product_id: prod.id,
+          product_nom: prod.nom,
+          quantite_ajoutee: item.quantite,
+          date: new Date().toISOString(),
+          user_id: authorizedBy.uid,
+          user_nom: authorizedBy.nom,
+          action: "ajustement"
+        };
+        txn.set(logDocRef, logRecord);
+      }
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "cancel transaction");
     throw error;
@@ -387,38 +429,37 @@ export async function addOrRestockProduct(
   addStock: number,
   currentUser: TeaRoomUser
 ): Promise<void> {
-  const batch = writeBatch(db);
-  
-  // Fetch original first
   const prodDocRef = doc(db, "products", productId);
-  const prodSnap = await getDoc(prodDocRef);
-  if (!prodSnap.exists()) {
-    throw new Error("Le produit spécifié n'existe pas.");
-  }
-  
-  const existingProduct = prodSnap.data() as MenuItem;
-  
-  batch.update(prodDocRef, {
-    stock_actuel: increment(addStock)
-  });
-  
-  // log details
-  const logId = `log_${Date.now()}_${productId}`;
-  const logDocRef = doc(db, "inventory_logs", logId);
-  const logRecord: InventoryLogItem = {
-    id: logId,
-    product_id: productId,
-    product_nom: existingProduct.nom,
-    quantite_ajoutee: addStock,
-    date: new Date().toISOString(),
-    user_id: currentUser.uid,
-    user_nom: currentUser.nom,
-    action: "reassort"
-  };
-  batch.set(logDocRef, logRecord);
   
   try {
-    await batch.commit();
+    await runTransaction(db, async (txn) => {
+      const prodSnap = await txn.get(prodDocRef);
+      if (!prodSnap.exists()) {
+        throw new Error("Le produit spécifié n'existe pas.");
+      }
+      
+      const existingProduct = prodSnap.data() as MenuItem;
+      const currentStock = existingProduct.stock_actuel ?? 0;
+      
+      txn.update(prodDocRef, {
+        stock_actuel: currentStock + addStock
+      });
+      
+      // log details
+      const logId = `log_${Date.now()}_${productId}`;
+      const logDocRef = doc(db, "inventory_logs", logId);
+      const logRecord: InventoryLogItem = {
+        id: logId,
+        product_id: productId,
+        product_nom: existingProduct.nom,
+        quantite_ajoutee: addStock,
+        date: new Date().toISOString(),
+        user_id: currentUser.uid,
+        user_nom: currentUser.nom,
+        action: "reassort"
+      };
+      txn.set(logDocRef, logRecord);
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "products restock");
     throw error;

@@ -16,7 +16,8 @@ import {
   RefreshCw,
   LogOut,
   Sparkles,
-  Check
+  Check,
+  Radio
 } from "lucide-react";
 
 import { setFirestoreOnline, auth } from "./firebase";
@@ -59,6 +60,7 @@ export default function App() {
   // Navigation Profile & Sessions
   const [activeTab, setActiveTab ] = useState<"caisse" | "ventes" | "stocks" | "stats">("caisse");
   const [currentUser, setCurrentUser] = useState<TeaRoomUser | null>(null);
+  const [showRfidSimulator, setShowRfidSimulator] = useState<boolean>(false);
   
   // Current Live Basket & tactile modifiers
   const [basket, setBasket] = useState<BasketItem[]>([]);
@@ -202,11 +204,70 @@ export default function App() {
   };
 
   const focusVendeurInput = () => {
-    const el = document.getElementById("rfid-badge-simulator-panel");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
+    setShowRfidSimulator(true);
+    setTimeout(() => {
+      const el = document.getElementById("rfid-badge-simulator-panel");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 120);
   };
+
+  // Background keystroke interceptor for USB/OTG physical RFID or NFC card swipers
+  useEffect(() => {
+    let rfidBuffer = "";
+    let lastKeypressTime = Date.now();
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Avoid stealing input from normal typing fields
+      const activeEl = document.activeElement as HTMLElement;
+      if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
+        if (activeEl.id !== "rfid-custom-token-input") {
+          return;
+        }
+      }
+
+      const now = Date.now();
+      if (now - lastKeypressTime > 120) {
+        rfidBuffer = "";
+      }
+      lastKeypressTime = now;
+
+      if (e.key === "Enter") {
+        const token = rfidBuffer.trim();
+        if (token.length >= 3) {
+          console.log("RFID PHYSICAL HARDWARE BADGE DETECTED (wedge) :", token);
+          handleRfidScan(token)
+            .then(() => {
+              // Sound a positive feedback beep
+              try {
+                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                if (ctx) {
+                  const o = ctx.createOscillator();
+                  const g = ctx.createGain();
+                  o.connect(g);
+                  g.connect(ctx.destination);
+                  o.frequency.value = 750;
+                  g.gain.setValueAtTime(0.08, ctx.currentTime);
+                  o.start();
+                  o.stop(ctx.currentTime + 0.1);
+                }
+              } catch (_) {}
+              setGlobalError("");
+            })
+            .catch((err) => {
+              setGlobalError(`Séquence RFID '${token}' rejetée: ${err.message}`);
+            });
+        }
+        rfidBuffer = "";
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        rfidBuffer += e.key;
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [allStaff, currentUser]);
 
   // 1. Initial automated seeding and load listeners
   useEffect(() => {
@@ -452,6 +513,17 @@ export default function App() {
           {/* Dynamic connection and offline-first toggles */}
           <div className="flex items-center gap-2.5">
             <button
+              id="rfid-global-toggle-btn"
+              onClick={() => setShowRfidSimulator(true)}
+              className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border bg-[#1E2E22] hover:bg-[#2A3E30] text-[#8BA888] border-[#3E5C45]/50 hover:text-emerald-300 hover:border-emerald-500/40 transition-all cursor-pointer shadow-sm shrink-0"
+              title="Ouvrir le simulateur de badge"
+            >
+              <Radio className="w-3.5 h-3.5 text-[#8BA888] animate-pulse" />
+              <span className="hidden md:inline">SIM CONFIG</span>
+              <span className="md:hidden">SIM</span>
+            </button>
+
+            <button
               id="offline-simulate-btn"
               onClick={toggleOfflineMode}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border transition-all duration-300 cursor-pointer shadow-sm ${
@@ -478,7 +550,11 @@ export default function App() {
 
             {/* Current user session badge styled as a personnel card */}
             {currentUser ? (
-              <div className="hidden sm:flex items-center gap-2.5 bg-[#141C16]/90 border border-[#3E5C45]/40 rounded-xl p-1.5 px-3 shadow-inner">
+              <div 
+                onClick={() => setShowRfidSimulator(true)}
+                className="hidden sm:flex items-center gap-2.5 bg-[#141C16]/90 border border-[#3E5C45]/40 rounded-xl p-1.5 px-3 shadow-inner cursor-pointer hover:border-emerald-500/50 hover:bg-[#1D2920] transition-all"
+                title="Gérer les Badgeurs / Personnel"
+              >
                 <div className="relative">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_#10B981]"></div>
                 </div>
@@ -488,7 +564,11 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center gap-2 bg-rose-950/80 border border-rose-800/40 text-rose-300 px-3 py-2 rounded-xl font-mono text-[9px] font-black tracking-widest animate-pulse">
+              <div 
+                onClick={() => setShowRfidSimulator(true)}
+                className="hidden sm:flex items-center gap-2 bg-rose-950/80 border border-rose-800/40 text-rose-300 px-3 py-2 rounded-xl font-mono text-[9px] font-black tracking-widest animate-pulse cursor-pointer hover:bg-rose-905 transition-all"
+                title="Accès Restreint : Cliquer pour simuler un badge"
+              >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 inline-block animate-ping"></span>
                 ACCÈS RESTREINT // BADGE RFID
               </div>
@@ -1039,19 +1119,40 @@ export default function App() {
             />
           )}
 
-          {/* RFID badge swiper slot */}
-          <RfidBadgeSimulator
-            onScan={handleRfidScan}
-            isLoading={processingCheckout}
-            currentUser={currentUser}
-            onLogout={() => {
-              setCurrentUser(null);
-              clearBasket();
-              setActiveTab("caisse");
-              setGlobalError("");
-            }}
-            allStaff={allStaff}
-          />
+          {/* RFID badge swiper slot (Rendered as an overlay modal for a clean layout on actual tablet/touch screens) */}
+          {showRfidSimulator && (
+            <div id="rfid-simulator-modal-overlay" className="fixed inset-0 bg-slate-950/65 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-1.5 border border-slate-200 overflow-hidden text-left transform transition-all animate-in zoom-in-95 duration-200">
+                
+                {/* Close Button top-right */}
+                <button 
+                  onClick={() => setShowRfidSimulator(false)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 p-2 rounded-xl transition cursor-pointer z-50 font-sans text-[10px] font-black tracking-wider"
+                  title="Masquer le simulateur"
+                >
+                  ✕ FERMER
+                </button>
+
+                <RfidBadgeSimulator
+                  onScan={async (token) => {
+                    await handleRfidScan(token);
+                    // Automatically close simulator after a small confirmation wait time
+                    setTimeout(() => setShowRfidSimulator(false), 900);
+                  }}
+                  isLoading={processingCheckout}
+                  currentUser={currentUser}
+                  onLogout={() => {
+                    setCurrentUser(null);
+                    clearBasket();
+                    setActiveTab("caisse");
+                    setGlobalError("");
+                    setShowRfidSimulator(false);
+                  }}
+                  allStaff={allStaff}
+                />
+              </div>
+            </div>
+          )}
 
         </div>
 

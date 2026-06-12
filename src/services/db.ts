@@ -92,21 +92,24 @@ const DEFAULT_STAFF: TeaRoomUser[] = [
     nom: "Alice (Serveuse)",
     email: "alice@salondethe.com",
     rfid_token: "RFID_ALICE_99",
-    role: "serveur"
+    role: "serveur",
+    pin_code: "1111"
   },
   {
     uid: "gerant_bob_uid",
     nom: "Bob (Gérant)",
     email: "bob@salondethe.com",
     rfid_token: "RFID_BOB_88",
-    role: "gerant"
+    role: "gerant",
+    pin_code: "2222"
   },
   {
     uid: "admin_clara_uid",
     nom: "Clara (Directrice)",
     email: "clara@salondethe.com",
     rfid_token: "RFID_CLARA_77",
-    role: "admin"
+    role: "admin",
+    pin_code: "3333"
   }
 ];
 

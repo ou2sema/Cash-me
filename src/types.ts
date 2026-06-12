@@ -6,6 +6,7 @@ export interface TeaRoomUser {
   email: string;
   rfid_token: string;
   role: UserRole;
+  pin_code?: string; // Secure 4-digit PIN for touch console role switches
 }
 
 export interface MenuItem {

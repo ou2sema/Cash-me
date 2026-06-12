@@ -553,6 +553,58 @@ export default function App() {
         </div>
       )}
 
+      {/* Super System Status Ribbon */}
+      <div id="tech-status-ribbon" className="bg-[#0b0f19] border-b border-white/[0.04] text-[10px] text-slate-400 font-mono py-1.5 px-4 md:px-6 flex flex-wrap items-center justify-between gap-3 relative z-40 select-none">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="font-bold text-cyan-400/90 uppercase tracking-widest text-[9px]">CONSOLE SYSTEM ACTIVE</span>
+          </div>
+          <span className="text-white/10 hidden sm:inline">|</span>
+          <div className="hidden sm:flex items-center gap-1.5 text-slate-500 text-[9px] tracking-wider">
+            <span>STATION COUPLAGE POS-3000 :: v3.2</span>
+          </div>
+        </div>
+
+        {/* Dynamic connection and offline-first toggles (Moved from header to avoid conflict) */}
+        <div className="flex items-center gap-2">
+          <button
+            id="rfid-global-toggle-btn"
+            onClick={() => setShowRfidSimulator(true)}
+            className="px-2.5 py-1 rounded-lg text-[9px] font-mono font-black tracking-wider uppercase flex items-center gap-1.5 border bg-[#111827]/80 hover:bg-white/[0.04] text-[#A5F3FC] border-white/10 hover:border-cyan-400/40 hover:shadow-[0_0_10px_rgba(165,243,252,0.1)] transition-all cursor-pointer shadow-sm shrink-0"
+            title="Ouvrir le simulateur de badge"
+          >
+            <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span>SIM CONFIG</span>
+          </button>
+
+          <button
+            id="offline-simulate-btn"
+            onClick={toggleOfflineMode}
+            className={`px-2.5 py-1 rounded-lg text-[9px] font-mono font-black tracking-wider uppercase flex items-center gap-1.5 border transition-all duration-300 cursor-pointer shadow-sm ${
+              isOnline
+                ? "bg-[#111827]/80 border-emerald-500/30 text-[#34D399] hover:bg-white/[0.04] hover:border-emerald-400/50 hover:shadow-[0_0_10px_rgba(52,211,153,0.1)]"
+                : "bg-rose-950/40 border-rose-500/40 text-rose-300 hover:bg-rose-900/40 hover:border-rose-500/60 shadow-rose-900/10 animate-pulse"
+            }`}
+            title="Simuler une coupure ou retour de réseau"
+          >
+            {isOnline ? (
+              <>
+                <Wifi className="w-3.5 h-3.5 text-emerald-405 shrink-0" />
+                <span className="hidden sm:inline">FLUX FIRESTORE DIRECT</span>
+                <span className="sm:hidden">ONLINE</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-rose-455 shrink-0" />
+                <span className="hidden sm:inline">PERSISTANCE HORS-LIGNE</span>
+                <span className="sm:hidden">OFFLINE</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Top Tablet Header Bar */}
       <header id="applet-main-header" className="relative overflow-hidden bg-[#070A13]/60 border-b border-white/[0.06] text-white shrink-0 sticky top-0 z-40 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl">
         
@@ -570,10 +622,10 @@ export default function App() {
         {/* Digital Grid Aesthetic Overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-40"></div>
 
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-5 relative z-20">
           
           {/* Brand & Tab Navigation Capsule */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full md:w-auto">
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 w-full lg:w-auto justify-between lg:justify-start">
             {/* Café Maazim metallic brand logo and text */}
             <div className="flex items-center gap-3 shrink-0">
               <div className="relative flex items-center justify-center">
@@ -602,10 +654,10 @@ export default function App() {
             </div>
 
             {/* Vertical separator in desktop */}
-            <div className="hidden sm:block h-6 w-[1px] bg-white/[0.08]" />
+            <div className="hidden md:block h-6 w-[1px] bg-white/[0.08]" />
 
             {/* Capsule tabs matching the photo, restoring original system menus */}
-            <div className="flex items-center gap-1.5 bg-[#111827]/60 border border-white/10 rounded-2xl p-1 backdrop-blur-md">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 bg-[#111827]/60 border border-white/10 rounded-2xl p-1 backdrop-blur-md max-w-full">
               <button
                 id="nav-tab-caisse"
                 onClick={() => { setActiveTab("caisse"); setGlobalError(""); }}
@@ -660,49 +712,12 @@ export default function App() {
             </div>
           </div>
 
-          {/* Dynamic connection and offline-first toggles */}
-          <div className="flex items-center gap-2.5 relative z-30">
-            <button
-              id="rfid-global-toggle-btn"
-              onClick={() => setShowRfidSimulator(true)}
-              className="px-3.5 py-2 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border bg-[#111827]/60 hover:bg-white/[0.04] text-[#A5F3FC] border-white/10 hover:border-cyan-400/40 hover:shadow-[0_0_15px_rgba(165,243,252,0.1)] transition-all cursor-pointer shadow-sm shrink-0"
-              title="Ouvrir le simulateur de badge"
-            >
-              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span className="hidden md:inline">SIM CONFIG</span>
-              <span className="md:hidden">SIM</span>
-            </button>
-
-            <button
-              id="offline-simulate-btn"
-              onClick={toggleOfflineMode}
-              className={`px-3.5 py-2 rounded-xl text-[10px] font-mono font-black tracking-wider uppercase flex items-center gap-2 border transition-all duration-300 cursor-pointer shadow-sm ${
-                isOnline
-                  ? "bg-[#111827]/60 border-emerald-500/30 text-[#34D399] hover:bg-white/[0.04] hover:border-emerald-400/50 hover:shadow-[0_0_15px_rgba(52,211,153,0.1)]"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300 hover:bg-rose-900/40 hover:border-rose-500/60 shadow-rose-900/10 animate-pulse"
-              }`}
-              title="Simuler une coupure ou retour de réseau"
-            >
-              {isOnline ? (
-                <>
-                  <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="hidden sm:inline">FIRESTORE DIRECT</span>
-                  <span className="sm:hidden">ONLINE</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <span className="hidden sm:inline">OFFLINE PERSISTENCE</span>
-                  <span className="sm:hidden">OFFLINE</span>
-                </>
-              )}
-            </button>
-
-            {/* Current user session badge styled as a personnel card */}
+          {/* Current user session badge styled as a personnel card */}
+          <div className="shrink-0">
             {currentUser ? (
               <div 
                 onClick={() => setShowRfidSimulator(true)}
-                className="hidden sm:flex items-center gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl p-1.5 px-3.5 shadow-inner cursor-pointer hover:border-cyan-400/40 hover:bg-white/[0.06] transition-all hover:shadow-[0_0_15px_rgba(165,243,252,0.1)]"
+                className="flex items-center gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl p-1.5 px-3.5 shadow-inner cursor-pointer hover:border-cyan-400/40 hover:bg-white/[0.06] transition-all hover:shadow-[0_0_15px_rgba(165,243,252,0.15)]"
                 title="Gérer les Badgeurs / Personnel"
               >
                 <div className="relative">
@@ -716,7 +731,7 @@ export default function App() {
             ) : (
               <div 
                 onClick={() => setShowRfidSimulator(true)}
-                className="hidden sm:flex items-center gap-2 bg-rose-950/45 border border-rose-800/30 text-rose-300 px-3.5 py-2 rounded-xl font-mono text-[9px] font-black tracking-widest animate-pulse cursor-pointer hover:bg-rose-900/20 hover:border-rose-700/50 transition-all shadow-[0_0_12px_rgba(244,63,94,0.1)]"
+                className="flex items-center gap-2 bg-rose-950/45 border border-rose-800/30 text-rose-300 px-3.5 py-2 rounded-xl font-mono text-[9px] font-black tracking-widest animate-pulse cursor-pointer hover:bg-rose-900/20 hover:border-rose-700/50 transition-all shadow-[0_0_12px_rgba(244,63,94,0.1)]"
                 title="Accès Restreint : Cliquer pour simuler un badge"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 inline-block animate-ping"></span>

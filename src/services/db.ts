@@ -22,106 +22,94 @@ import { MenuItem, TeaRoomUser, TransactionRecord, BasketItem, InventoryLogItem,
 // Static Seed Data
 const INITIAL_PRODUCTS: Omit<MenuItem, "id">[] = [
   {
-    nom: "Sencha Impérial",
-    prix: 5.5,
-    stock_actuel: 45,
-    stock_alerte: 10,
-    categorie: "Thés Verts",
-    description: "Thé vert classique japonais aux notes fraîches et herbacées, riche en antioxydants."
-  },
-  {
-    nom: "Matcha de Cérémonie Uji",
-    prix: 8.0,
-    stock_actuel: 12,
+    nom: "Thé Menthe",
+    prix: 4.500,
+    stock_actuel: 35,
     stock_alerte: 5,
-    categorie: "Matcha & Lattés",
-    description: "Poudre de matcha premium d'Uji battue traditionnellement à la main. Texture crémeuse."
+    categorie: "Théière",
+    description: "Thé vert traditionnel infusé à la menthe fraîche tunisienne et pignons."
   },
   {
-    nom: "Darjeeling d'Automne Extra",
-    prix: 6.2,
-    stock_actuel: 30,
-    stock_alerte: 8,
-    categorie: "Thés Noirs",
-    description: "Thé noir d'exception des contreforts de l'Himalaya, liqueur ambrée et bouquet muscaté."
+    nom: "Chicha Classique",
+    prix: 15.000,
+    stock_actuel: 20,
+    stock_alerte: 3,
+    categorie: "Narguilé",
+    description: "Narguilé traditionnel, charbon naturel, parfums au choix (Double Pomme, Menthe...)."
   },
   {
-    nom: "Oolong Fleur d'Oranger",
-    prix: 6.5,
-    stock_actuel: 18,
+    nom: "Café Turc",
+    prix: 3.500,
+    stock_actuel: 28,
     stock_alerte: 5,
-    categorie: "Thés Bleus & Oolong",
-    description: "Oolong semi-oxydé de Taïwan délicatement parsemé de pétales de néroli apaisants."
+    categorie: "Théière",
+    description: "Café de tradition cuit sur le sable chaud, parfumé à la cardamome ou la fleur d'oranger."
   },
   {
-    nom: "Rooibos Vanille de Madagascar",
-    prix: 4.8,
-    stock_actuel: 25,
-    stock_alerte: 8,
-    categorie: "Infusions & Rooibos",
-    description: "Infusion douce et naturellement sans théine, mariée à la gousse de vanille Bourbon parfumée."
-  },
-  {
-    nom: "Mochi Artisanal Matcha-Haricot",
-    prix: 3.5,
-    stock_actuel: 8,
-    stock_alerte: 10, // Stock alerte higher to show notifications
-    categorie: "Pâtisseries Fines",
-    description: "Pâtisserie traditionnelle japonaise à base de riz gluant, fourrée d'une pâte d'azuki douce."
-  },
-  {
-    nom: "Financier Grillé au Sésame Noir",
-    prix: 4.0,
+    nom: "Pâtisserie",
+    prix: 6.000,
     stock_actuel: 15,
-    stock_alerte: 6,
-    categorie: "Pâtisseries Fines",
-    description: "Gâteau moelleux aux amandes sublimé par le goût toasté, intense et rustique du sésame noir."
+    stock_alerte: 4,
+    categorie: "Cristal de Glace",
+    description: "Pâtisserie fine tunisienne artisanale (Baklawa, Kaak Warka, Mlabes)."
   },
   {
-    nom: "Fouet Matcha 'Chasen'",
-    prix: 18.0,
-    stock_actuel: 5,
+    nom: "Chicha",
+    prix: 12.000,
+    stock_actuel: 12,
     stock_alerte: 2,
-    categorie: "Services & Accessoires",
-    description: "Fouet traditionnel à matcha de 80 brins, taillé à la main dans une seule pièce de bambou."
+    categorie: "Narguilé",
+    description: "Chicha standard parfum menthe-citron doux."
   },
+  {
+    nom: "Eau Minérale",
+    prix: 2.000,
+    stock_actuel: 50,
+    stock_alerte: 10,
+    categorie: "Cristal de Glace",
+    description: "Eau minérale plate micro-filtrée et servie très fraîche."
+  },
+  {
+    nom: "Menu Chaud",
+    prix: 18.500,
+    stock_actuel: 10,
+    stock_alerte: 2,
+    categorie: "Théière",
+    description: "Formule dégustation chaude complète avec théières d'exception et assortiment."
+  }
 ];
 
 const DEFAULT_STAFF: TeaRoomUser[] = [
   {
+    uid: "admin_maazim_uid",
+    nom: "ADMIN MAAZIM",
+    email: "admin@maazim.tn",
+    rfid_token: "RFID_MAAZIM_00",
+    role: "admin",
+    pin_code: "1234"
+  },
+  {
     uid: "serveur_alice_uid",
-    nom: "Alice (Serveuse)",
-    email: "alice@salondethe.com",
+    nom: "ALICE",
+    email: "alice@maazim.tn",
     rfid_token: "RFID_ALICE_99",
     role: "serveur",
     pin_code: "1111"
   },
   {
     uid: "gerant_bob_uid",
-    nom: "Bob (Gérant)",
-    email: "bob@salondethe.com",
+    nom: "BOB",
+    email: "bob@maazim.tn",
     rfid_token: "RFID_BOB_88",
     role: "gerant",
     pin_code: "2222"
-  },
-  {
-    uid: "admin_clara_uid",
-    nom: "Clara (Directrice)",
-    email: "clara@salondethe.com",
-    rfid_token: "RFID_CLARA_77",
-    role: "admin",
-    pin_code: "3333"
   }
 ];
 
 const INITIAL_CATEGORIES = [
-  "Thés Verts",
-  "Thés Noirs",
-  "Thés Bleus & Oolong",
-  "Matcha & Lattés",
-  "Infusions & Rooibos",
-  "Pâtisseries Fines",
-  "Services & Accessoires"
+  "Théière",
+  "Cristal de Glace",
+  "Narguilé"
 ];
 
 // Seed databases if products collections are empty

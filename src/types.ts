@@ -18,6 +18,7 @@ export interface MenuItem {
   categorie: string;
   description: string;
   image_url?: string;
+  accent?: 'cyan' | 'amber' | 'green' | 'purple';
 }
 
 export interface BasketItem {
@@ -81,3 +82,24 @@ export const PRODUCT_CATEGORIES = [
   "Pâtisseries Fines",
   "Services & Accessoires"
 ] as const;
+
+// Figma Design System Models for POS
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  accent: 'cyan' | 'amber' | 'green' | 'purple';
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+}
+
+export interface Transaction {
+  id: string;
+  items: CartItem[];
+  total: number;
+  paymentMethod: string;
+  date: Date;
+}

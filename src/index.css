@@ -1,13 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;550;700;800&display=swap');
 @import "tailwindcss";
 
+:root {
+  --pos-bg: #040c1a;
+  --pos-surface: #081424;
+  --pos-surface-2: #0c1c32;
+  --pos-surface-3: #102240;
+
+  --pos-cyan: #00d4ff;
+  --pos-cyan-dim: rgba(0, 212, 255, 0.10);
+  --pos-cyan-border: rgba(0, 212, 255, 0.28);
+  --pos-cyan-glow: 0 0 18px rgba(0, 212, 255, 0.35);
+
+  --pos-amber: #f59e0b;
+  --pos-amber-dim: rgba(245, 158, 11, 0.10);
+  --pos-amber-border: rgba(245, 158, 11, 0.35);
+
+  --pos-green: #10b981;
+  --pos-green-dim: rgba(16, 185, 129, 0.10);
+  --pos-green-border: rgba(16, 185, 129, 0.35);
+
+  --pos-purple: #a855f7;
+  --pos-purple-dim: rgba(168, 85, 247, 0.10);
+  --pos-purple-border: rgba(168, 85, 247, 0.35);
+
+  --pos-red: #ef4444;
+  --pos-red-dim: rgba(239, 68, 68, 0.10);
+
+  --pos-text: #e2e8f0;
+  --pos-text-dim: #94a3b8;
+  --pos-text-muted: #475569;
+  --pos-border: rgba(0, 212, 255, 0.12);
+
+  --font-pos: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Let's keep custom high density animations and utility classes if needed */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -16,100 +50,27 @@
   scrollbar-width: none;
 }
 
-/* Global Reset for Cash-Me Pearl Theme */
 html, body {
-  background-color: #070A13 !important;
-  color: #f1f5f9;
+  background-color: #040c1a;
+  color: #e2e8f0;
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* Magic glassmorphism container overrides */
-#viewport-ventes,
-#viewport-stocks,
-#viewport-stats,
-#unauthorized-stats-container,
-#rfid-badge-simulator-panel,
-#caisse-basket-container,
-div[id*="-container"]:not(.receipt-paper), 
-div[id*="-panel"]:not(.receipt-paper),
-.bg-white:not(.receipt-paper):not(.flat-ticket) {
-  background-color: rgba(17, 24, 39, 0.45) !important;
-  backdrop-filter: blur(12px) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  color: #f1f5f9 !important;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Header Text styling */
-h1, h2, h3, h4, h5, h6, 
-.text-[#2D3A30], 
-.text-slate-900,
-.text-slate-800 {
-  color: #a5f3fc !important;
-  font-family: "Space Grotesk", "Inter", sans-serif !important;
-}
-
-/* Paragraph and help texts */
-p, .text-slate-500, .text-slate-600 {
-  color: #94a3b8 !important;
-}
-
-/* Table controls and rows */
-table, tr {
-  border-color: rgba(255, 255, 255, 0.05) !important;
-}
-tr:hover {
-  background-color: rgba(255, 255, 255, 0.02) !important;
-}
-td, th {
-  color: #f1f5f9 !important;
-  border-color: rgba(255, 255, 255, 0.05) !important;
-}
-th {
-  background-color: rgba(11, 15, 25, 0.8) !important;
-  color: #a5f3fc !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  font-size: 11px !important;
-  letter-spacing: 0.05em !important;
-}
-
-/* Input Fields overrides */
-input:not([type="checkbox"]), select, textarea {
-  background-color: rgba(7, 10, 19, 0.7) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
-  border-radius: 12px !important;
-}
-input:not([type="checkbox"]):focus, select:focus, textarea:focus {
-  border: 1px solid rgba(34, 211, 238, 0.4) !important;
-  box-shadow: 0 0 10px rgba(34, 211, 238, 0.15) !important;
-}
-
-/* Quick scan badge buttons, tables, forms */
-button[id^="stats-quick-badge-"], 
-.bg-[#F1F3EE], 
-.bg-slate-50, 
-.bg-slate-100 {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-  color: #e2e8f0 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-button[id^="stats-quick-badge-"]:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-/* Styled Scrollbars */
+/* Styled Scrollbars for Dark Theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(7, 10, 19, 0.6);
+  background: #081424;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: #0c1c32;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.25);
+  background: #00d4ff;
 }

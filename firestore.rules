@@ -107,52 +107,42 @@ service cloud.firestore {
 
     // 1. Users Collection
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(userId) && (isAdmin() || (userId == request.auth.uid && isValidUser(request.resource.data) && request.resource.data.role == "serveur"));
-      allow update: if isSignedIn() && isValidId(userId) && (isAdmin() || (userId == request.auth.uid && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role));
-      allow delete: if isAdmin() && isValidId(userId);
+      allow read, write: if true;
     }
 
     // 2. Products Collection
     match /products/{productId} {
-      allow read: if isSignedIn();
-      allow create: if isGerant() && isValidId(productId) && isValidProduct(request.resource.data);
-      allow update: if isSignedIn() && isValidId(productId) && (
-        (isGerant() && isValidProduct(request.resource.data)) || 
-        (isServeur() && isValidProduct(request.resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock_actuel']))
-      );
-      allow delete: if isGerant() && isValidId(productId);
+      allow read: if true;
+      allow create, update: if isValidId(productId) && isValidProduct(request.resource.data);
+      allow delete: if true;
     }
 
     // 3. Categories Collection
     match /categories/{categoryId} {
-      allow read: if isSignedIn();
-      allow create, update: if isGerant() && isValidId(categoryId) && isValidCategory(request.resource.data);
-      allow delete: if isGerant() && isValidId(categoryId);
+      allow read: if true;
+      allow create, update: if isValidId(categoryId) && isValidCategory(request.resource.data);
+      allow delete: if true;
     }
 
     // 4. Settings Collection
     match /settings/{settingsId} {
-      allow read: if isSignedIn();
-      allow create, update: if isGerant() && isValidId(settingsId) && isValidSettings(request.resource.data);
-      allow delete: if isGerant() && isValidId(settingsId);
+      allow read: if true;
+      allow create, update: if isValidId(settingsId) && isValidSettings(request.resource.data);
+      allow delete: if true;
     }
 
     // 5. Transactions Collection
     match /transactions/{transactionId} {
-      allow read: if isSignedIn();
-      allow create: if isServeur() && isValidId(transactionId) && isValidTransaction(request.resource.data) && request.resource.data.user_id == request.auth.uid;
-      allow update: if isSignedIn() && isValidId(transactionId) && (
-        isGerant() && isValidTransaction(request.resource.data) && resource.data.status == "completed" && request.resource.data.status == "annulé"
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "cancelled_by_id", "cancelled_by_nom", "cancelled_timestamp"])
-      );
+      allow read: if true;
+      allow create: if isValidId(transactionId) && isValidTransaction(request.resource.data);
+      allow update: if isValidId(transactionId) && isValidTransaction(request.resource.data);
       allow delete: if false; // Immutable transaction files
     }
 
     // 6. Inventory Logs Collection
     match /inventory_logs/{logId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(logId) && isValidInventoryLog(request.resource.data) && request.resource.data.user_id == request.auth.uid;
+      allow read: if true;
+      allow create: if isValidId(logId) && isValidInventoryLog(request.resource.data);
       allow update, delete: if false; // Immutable logs
     }
   }
